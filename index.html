@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feynman AI</title>
+<!-- Google Analytics (GA4) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Y6MPKG013G"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-Y6MPKG013G');
+</script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2382b8b7'/%3E%3Cpath d='M16 8.5 L27 13 L16 17.5 L5 13 Z' fill='%23fff'/%3E%3Cpath d='M11 14.7 V19 c0 1.5 2.3 2.7 5 2.7 s5 -1.2 5 -2.7 V14.7 L16 17.9 Z' fill='%23fff'/%3E%3Cpath d='M27 13 v5.4' stroke='%23fff' stroke-width='1.1' fill='none'/%3E%3Ccircle cx='27' cy='19.2' r='1.3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
+  /* ===== Design variables (colors, border-radius, etc. centralized here for easy global changes) ===== */
+  :root{
+    --ink:#233436; --text:#44585c; --line:#c2dddc; --soft:#d8e9e8; --bg:#f0f7f7; --panel:#ffffff;
+    --accent:#82b8b7; --accent-dark:#6ba3a2; --accentsoft:#e6f2f1; --accent-tint:#a3c9c8;
+    --muted:#6d8285; --faint:#9bb2b2; --warn:#b06a17;
+    --radius:12px; --maxw:100%; --shadow:0 1px 2px rgba(30,60,58,.06);
+  }
+  /* Dark mode (switchable in "Me") — deep gray-teal, light teal-white text */
+  html[data-theme="dark"]{
+    --ink:#e7f1f0; --text:#c3d5d3; --muted:#90a9a7; --faint:#6f8987;
+    --line:#3a5250; --soft:#33484a; --bg:#273838; --panel:#2f4443;
+    --accent:#a3c9c8; --accent-dark:#8fbdbc; --accentsoft:#33494a; --accent-tint:#4d706d;
+    --warn:#d29a48; --shadow:0 1px 2px rgba(0,0,0,.25);
+  }
+  html[data-theme="dark"] .btn.primary,
+  html[data-theme="dark"] .iconbtn.send,
+  html[data-theme="dark"] .seg button.on,
+  html[data-theme="dark"] .me{ color:#16302e; }   /* dark text on the light-mint accent in dark mode */
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink);
+       font-family:'Lato',-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       min-height:100vh; line-height:1.55;}
+
+  /* ===== Phone-style shell: full-width on phones, centered into an App window on large screens ===== */
+  /* === Full page + per-device layout ===
+     Phone (portrait): single column full-width, bottom navigation.
+     Tablet: single column wider, persona/feedback cards arranged side by side in multiple columns.
+     Landscape/desktop: fixed left nav bar + wide content area on the right, fully using horizontal space, no longer cramped. */
+  .app{width:100%; min-height:100vh; display:flex; flex-direction:column; position:relative;}
+  .main{flex:1; display:flex; flex-direction:column; width:100%; min-width:0;}
+  .header,.dots,.body{ width:100%; max-width:var(--maxw); margin-left:auto; margin-right:auto; }
+  .tabbar{ width:100%; }
+  .cardgrid{display:flex; flex-direction:column;}
+
+  @media(min-width:680px){
+    :root{ --maxw:680px; }
+    .cardgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+    .cardgrid .opt{margin-bottom:0; height:100%;}
+    .fgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; align-items:start;}
+    .fgrid .fcard{margin-bottom:0;}
+  }
+  @media(min-width:900px){
+    :root{ --maxw:860px; }
+    .app{ flex-direction:row; align-items:stretch; }
+    .tabbar{ order:-1; flex-direction:column; justify-content:flex-start; width:240px; max-width:240px;
+             margin:0; border-top:0; border-right:1.5px solid var(--soft); position:sticky; top:0;
+             height:100vh; padding:20px 12px; gap:4px; }
+    .tabbar .tab{ flex:0 0 auto; display:flex; align-items:center; gap:13px; text-align:left; padding:13px 16px; font-size:15px; border-radius:12px; }
+    .tabbar .tab .tic{ display:inline; font-size:22px; margin:0; margin-bottom:0; }
+    .tabbar .tab.on{ background:var(--accentsoft); }
+    h2{font-size:26px;} .hero h1{font-size:34px;} .hero .tag{font-size:16px;}
+    .chat{height:430px;}
+    .body{ padding:32px 48px 130px; }
+  }
+  @media(min-width:1300px){ :root{ --maxw:1000px; } }
+
+  /* ===== Top bar ===== */
+  .header{display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--line);}
+  .brand{font-size:17px; font-weight:900; color:var(--ink); letter-spacing:-.2px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--panel);}
+  .seg button{border:0; background:transparent; padding:5px 12px; font-size:12px; cursor:pointer; color:var(--muted); font-family:inherit;}
+  .seg button.on{background:var(--accent); color:#fff; font-weight:600;}
+
+  /* ===== Progress dots (shown during the teaching flow) ===== */
+  .dots{display:flex; gap:6px; justify-content:center; padding:4px 0 6px;}
+  .dots.hide{display:none;}
+  .dots i{width:8px; height:8px; border-radius:50%; background:var(--soft);}
+  .dots i.on{background:var(--accent); width:22px; border-radius:4px;}
+
+  /* ===== Content area ===== */
+  .body{flex:1; display:flex; flex-direction:column; justify-content:safe center; padding:28px 22px 110px;}
+  .screen{display:none;} .screen.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  h2{font-size:22px; font-weight:900; color:var(--ink); margin:4px 0 6px; letter-spacing:-.2px;} .hint{font-size:13.5px; color:var(--muted); margin-bottom:18px; line-height:1.6;}
+
+  /* Common controls */
+  .btn{padding:13px 18px; border-radius:10px; border:1.5px solid var(--line); background:var(--panel); color:var(--ink); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; width:100%; box-shadow:var(--shadow); transition:background .12s,border-color .12s;}
+  .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 1px 2px rgba(130,184,183,.30);}
+  .btn.primary:hover{background:var(--accent-dark); border-color:var(--accent-dark);}
+  .btn.ghost{color:var(--muted); border-color:var(--line); box-shadow:none;}
+  .btn.ghost:hover{color:var(--accent); border-color:var(--accent); background:var(--accentsoft);}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .row{display:flex; gap:10px; margin-top:18px;} .row .btn{flex:1;}
+  input[type=text],input[type=email]{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 15px; font-size:15px; font-family:inherit;}
+  input:focus{outline:none; border-color:var(--accent);}
+  label{font-size:13px; font-weight:600; display:block; margin:14px 0 7px;}
+
+  /* Landing page */
+  .hero{text-align:center; padding-top:10px;} .hero .logo{font-size:42px;} .hero h1{font-size:26px; margin:12px 0 8px; line-height:1.25;}
+  .hero .tag{font-size:14px; color:var(--muted); margin-bottom:24px; line-height:1.6;}
+  .values{display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:26px; text-align:left;}
+  @media(min-width:440px){ .values{grid-template-columns:1fr 1fr 1fr;} }
+  .vcard{border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);}
+  .vcard .vic{font-size:24px;} .vcard .vt{font-weight:800; font-size:14px; margin:8px 0 4px; color:var(--ink);} .vcard .vd{font-size:12px; color:var(--muted); line-height:1.5;}
+
+  /* Sign in */
+  .ctr{text-align:center;}
+  .ssobtn{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:14px; background:var(--panel); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; font-weight:600; margin-bottom:16px; font-family:inherit;}
+  .ssobtn:hover{border-color:var(--accent); background:var(--accentsoft);}
+  .gicon{width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:800; color:#4285F4; font-size:13px;}
+  .divider{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; margin:4px 0 14px;}
+  .divider::before,.divider::after{content:""; flex:1; height:1.5px; background:var(--soft);}
+  .legal{text-align:center; font-size:11px; color:var(--muted); margin-top:14px; line-height:1.5;}
+  /* Verification-related */
+  .acct{display:flex; align-items:center; gap:12px; border:1.5px solid var(--line); border-radius:12px; padding:13px 15px; cursor:pointer; margin-bottom:10px;}
+  .acct:hover{border-color:var(--accent); background:var(--accentsoft);}
+  .acct .aav{width:38px; height:38px; border-radius:50%; background:var(--accentsoft); border:1.5px solid var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--accent);}
+  .acct .an{font-weight:700; font-size:14px;} .acct .ae{font-size:12px; color:var(--muted);}
+  .codein{letter-spacing:8px; text-align:center; font-size:22px; font-weight:700;}
+  .demonote{text-align:center; font-size:11px; color:var(--warn); background:#fff6ec; border:1px solid #f0d9bf; border-radius:10px; padding:8px 10px; margin-top:14px; line-height:1.5;}
+  .linkbtn{background:none; border:0; color:var(--accent); font-size:12px; cursor:pointer; font-family:inherit; text-decoration:underline; padding:0; margin-top:6px;}
+
+  /* Option rows (school stage / persona) */
+  .opt{border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:12px; cursor:pointer; background:var(--panel); display:flex; align-items:center; gap:15px; box-shadow:var(--shadow); transition:border-color .12s,background .12s;}
+  .opt:hover{border-color:var(--accent-tint); background:var(--accentsoft);}
+  .opt.sel{border-color:var(--accent); border-width:2px; background:var(--accentsoft);}
+  .opt .ic{font-size:27px; width:40px; text-align:center;} .opt .t{font-weight:800; font-size:15px; color:var(--ink);} .opt .d{font-size:12px; color:var(--muted); margin-top:3px; line-height:1.45;}
+
+  /* Subject grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:11px;}
+  .chip{border:1px solid var(--line); border-radius:10px; padding:16px 8px; text-align:center; font-size:14px; font-weight:700; cursor:pointer; background:var(--panel); box-shadow:var(--shadow);}
+  .chip:hover{border-color:var(--accent-tint); background:var(--accentsoft);}
+  .chip.sel{border-color:var(--accent); border-width:2px; background:var(--accentsoft); font-weight:800;}
+  /* Upload study material */
+  .filerow{display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap;}
+  .filebtn{border:1.5px dashed var(--line); background:var(--panel); border-radius:12px; padding:11px 16px; font-size:14px; cursor:pointer; font-family:inherit; color:var(--accent); font-weight:600;}
+  .filebtn:hover{border-color:var(--accent); background:var(--accentsoft);}
+  .filename{font-size:13px; color:var(--muted); word-break:break-all;}
+  .filex{border:0; background:none; color:var(--muted); cursor:pointer; font-size:16px;}
+  .filex.hide{display:none;}
+  .filehint{font-size:11px; color:var(--muted); margin-top:7px; line-height:1.5;}
+
+  /* Teaching */
+  .chatmeta{display:flex; justify-content:space-between; align-items:center; margin:0 2px 9px;}
+  .chatmeta .t{font-size:15px; font-weight:700;} .chatmeta .c{font-size:11px; color:var(--muted);}
+  .chat{border:1px solid var(--line); border-radius:var(--radius); padding:14px; height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; background:var(--bg);}
+  .bubble{max-width:86%; padding:9px 12px; border-radius:14px; font-size:14px; line-height:1.5; white-space:pre-wrap;}
+  .ai{align-self:flex-start; background:var(--panel); border:1px solid var(--line); border-bottom-left-radius:4px;}
+  .me{align-self:flex-end; background:var(--accent); color:#fff; border:1px solid var(--accent); border-bottom-right-radius:4px;}
+  .who{font-size:10px; color:var(--muted); margin-bottom:4px; display:flex; align-items:center; gap:5px;}
+  .composer{display:flex; gap:9px; margin-top:11px; align-items:center;}
+  .composer input{flex:1;}
+  .iconbtn{width:46px; height:46px; border-radius:10px; border:1.5px solid var(--line); background:var(--panel); font-size:18px; cursor:pointer; flex-shrink:0;}
+  .iconbtn:hover{border-color:var(--accent);}
+  .iconbtn.send{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .iconbtn.rec{background:#e24b4a; color:#fff; border-color:#e24b4a; animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+  .live{font-size:11px; color:var(--muted); min-height:16px; margin:6px 2px 0; font-style:italic;}
+  .typing{font-style:italic; color:var(--muted);}
+  .linklike{background:none; border:0; color:var(--accent); font-size:12px; cursor:pointer; font-family:inherit; padding:8px 2px 0; text-decoration:underline;}
+  .suggest{border:1.5px solid var(--accent); border-radius:12px; background:var(--accentsoft); padding:10px 12px; margin-top:8px; font-size:13px; line-height:1.55; color:#33504f;}
+  .suggest.hide{display:none;}
+  .suggest .sl{font-size:11px; color:var(--warn); font-weight:700; margin-bottom:4px;}
+  .suggest .sbtn{margin-top:9px; font-size:12px; border:1.5px solid var(--accent); background:var(--panel); color:var(--accent); border-radius:16px; padding:5px 13px; cursor:pointer; font-family:inherit; font-weight:700;}
+
+  /* Feedback */
+  .score{border:1px solid var(--accent-tint); border-radius:16px; padding:22px; text-align:center; background:linear-gradient(180deg,#fff,var(--accentsoft)); margin-bottom:16px;}
+  .score .n{font-size:46px; font-weight:900; color:var(--accent); line-height:1;} .score .l{font-size:12px; color:var(--muted); margin-top:5px; font-weight:700; letter-spacing:.3px;}
+  .submetrics{display:flex; gap:10px; margin-bottom:16px;}
+  .submetrics .sm{flex:1; border:1px solid var(--line); border-radius:10px; padding:12px 13px; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow);}
+  .submetrics .smk{font-size:12px; color:var(--muted); font-weight:700;} .submetrics .smv{font-size:18px; font-weight:900; color:var(--accent);}
+  .fcard{border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; margin-bottom:11px; box-shadow:var(--shadow);}
+  .fcard .h{font-size:13.5px; font-weight:800; color:var(--ink); margin-bottom:8px;}
+  .fcard .li{font-size:13px; color:#444; margin:6px 0; padding-left:17px; position:relative; line-height:1.45;}
+  .fcard .li::before{content:"\203A"; position:absolute; left:2px; color:var(--accent);}
+
+  /* History */
+  .hrow{border:1px solid var(--line); border-radius:10px; padding:13px 15px; margin-bottom:11px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; background:var(--panel); box-shadow:var(--shadow);}
+  .hrow:hover{border-color:var(--accent-tint); background:var(--accentsoft);}
+  .hrow .hl{font-weight:800; font-size:14px; color:var(--ink);} .hrow .hm{font-size:11px; color:var(--muted); margin-top:3px;}
+  .hbadge{font-size:14px; font-weight:900; color:var(--accent); border:1px solid var(--accent-tint); border-radius:20px; padding:4px 12px; background:var(--accentsoft);}
+  .empty{text-align:center; color:var(--muted); padding:30px 10px;} .empty .ei{font-size:34px;}
+  /* Progress curve */
+  .progcard{border:1.5px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:16px;}
+  .progcard .ph{font-size:12px; font-weight:700; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between;}
+  /* Privacy note */
+  .privnote{font-size:11px; color:var(--muted); line-height:1.5; margin-top:16px; text-align:center;}
+  /* First-time onboarding */
+  .ovl{position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .ovl.hide{display:none;}
+  .ovlcard{background:var(--panel); border-radius:18px; max-width:380px; width:100%; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .ovlcard h3{font-size:20px; margin:0 0 6px;}
+  .ovlstep{display:flex; gap:12px; align-items:flex-start; margin:12px 0;}
+  .ovlstep .num{width:26px; height:26px; border-radius:50%; background:var(--accentsoft); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px;}
+  .ovlstep .st{font-size:13px; line-height:1.5;}
+
+  /* Me / Profile */
+  .prof{display:flex; align-items:center; gap:14px; margin-bottom:20px;}
+  .avatar{width:54px; height:54px; border-radius:50%; background:var(--accentsoft); border:1.5px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:var(--accent);}
+  .srow{border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:11px; display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:700; color:var(--ink); background:var(--panel); cursor:pointer; box-shadow:var(--shadow);}
+  .srow .sv{font-size:13px; color:var(--muted); font-weight:400;}
+  .toggle{width:44px; height:24px; border-radius:14px; background:var(--soft); position:relative; transition:.2s; flex-shrink:0;}
+  .toggle.on{background:var(--accent);}
+  .toggle::after{content:""; position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:var(--panel); transition:.2s;}
+  .toggle.on::after{left:23px;}
+  .demobadge{display:inline-block; font-size:10px; color:var(--warn); border:1px solid var(--warn); border-radius:10px; padding:1px 7px; margin-left:6px; vertical-align:middle; font-weight:600;}
+
+  /* Bottom navigation */
+  .tabbar{display:flex; border-top:1.5px solid var(--soft); background:var(--panel);}
+  .tabbar.hide{display:none;}
+  .tab{flex:1; text-align:center; padding:9px 0 12px; font-size:11px; color:var(--muted); cursor:pointer;}
+  .tab .tic{font-size:20px; display:block; margin-bottom:2px;} .tab.on{color:var(--accent); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="main">
+  <div class="header">
+    <div class="brand">Feynman AI <span class="demobadge" data-en="demo brain" data-zh="演示大脑">demo brain</span></div>
+    <div class="seg" id="langSeg"><button class="on" data-l="en">EN</button><button data-l="zh">中文</button></div>
+  </div>
+  <div class="dots hide" id="dots"><i id="d0"></i><i id="d1"></i><i id="d2"></i><i id="d3"></i><i id="d4"></i></div>
+
+  <div class="body" id="bodyEl">
+    <!-- Landing page -->
+    <div class="screen active" id="sc-landing">
+      <div class="hero"><div class="logo">🧠💬</div>
+        <h1 data-en="Learn anything by teaching it to an AI" data-zh="把知识讲给 AI，真正学会它">Learn anything by teaching it to an AI</h1>
+        <div class="tag" data-en="Based on the Feynman Technique: if you can teach it simply, you truly understand it." data-zh="基于费曼学习法：能讲简单，才是真懂。">Based on the Feynman Technique.</div>
+        <div class="values">
+          <div class="vcard"><div class="vic">🎙️</div><div class="vt" data-en="Teach by voice or text" data-zh="语音或文字讲解">Teach by voice or text</div><div class="vd" data-en="Speak and it's transcribed, or just type." data-zh="开口说会自动转文字，也可以直接打字。">Speak or type.</div></div>
+          <div class="vcard"><div class="vic">🎭</div><div class="vt" data-en="Pick your student" data-zh="选你的学生">Pick your student</div><div class="vd" data-en="Child, classmate or expert — each replies in its own voice." data-zh="小孩、同学或专家——各用自己的声音回应。">Each in its own voice.</div></div>
+          <div class="vcard"><div class="vic">📊</div><div class="vt" data-en="Track progress" data-zh="追踪进步">Track progress</div><div class="vd" data-en="Every session is saved with a score." data-zh="每次讲课都保存并附评分。">Saved with a score.</div></div>
+        </div>
+        <button class="btn primary" data-go="login" data-en="Get started →" data-zh="开始使用 →">Get started →</button>
+      </div>
+    </div>
+
+    <!-- Sign in -->
+    <div class="screen" id="sc-login">
+      <div class="ctr" style="font-size:34px; margin:8px 0;">👋</div>
+      <h2 class="ctr" data-en="What should we call you?" data-zh="你叫什么名字？">What should we call you?</h2>
+      <div class="hint ctr" data-en="Just to personalize your learning — saved only on this device, no account needed." data-zh="只用来个性化你的学习记录，仅保存在这台设备上，无需注册账号。">Saved on this device.</div>
+      <label data-en="Your name" data-zh="你的名字">Your name</label>
+      <input type="text" id="dispName" data-ph-en="e.g. Elena" data-ph-zh="例如：Elena">
+      <label data-en="Email (optional)" data-zh="邮箱（可选）">Email (optional)</label>
+      <input type="email" id="email" data-ph-en="name@example.com" data-ph-zh="name@example.com">
+      <div class="row"><button class="btn primary" id="enterBtn" data-en="Start learning →" data-zh="开始学习 →">Start learning →</button></div>
+    </div>
+
+    <!-- (Sign-in removed — name only, no account; handled by sc-login above) -->
+
+    <!-- School stage -->
+    <div class="screen" id="sc-stage">
+      <h2 data-en="Who are you?" data-zh="你现在是？">Who are you?</h2>
+      <div class="hint" data-en="This sets your subjects and the AI's difficulty. Change it later in Me." data-zh="这会决定你的科目和 AI 难度。之后可在“我的”里改。">Sets your subjects &amp; difficulty.</div>
+      <div class="opt" data-stage="middle"><div class="ic">🎒</div><div><div class="t" data-en="Middle School" data-zh="初中生">Middle School</div><div class="d" data-en="Subjects & difficulty tuned for middle school" data-zh="科目与难度按初中调整">Tuned for middle school</div></div></div>
+      <div class="opt" data-stage="high"><div class="ic">🎓</div><div><div class="t" data-en="High School" data-zh="高中生">High School</div><div class="d" data-en="Subjects & difficulty tuned for high school" data-zh="科目与难度按高中调整">Tuned for high school</div></div></div>
+    </div>
+
+    <!-- Subject -->
+    <div class="screen" id="sc-subject">
+      <h2 data-en="What will you teach?" data-zh="今天讲什么？">What will you teach?</h2>
+      <div class="hint" id="subjectHint" data-en="Pick a subject (this list comes from your school stage)." data-zh="选一个科目（列表由你的学段决定）。">Pick a subject.</div>
+      <div class="grid" id="subjectGrid"></div>
+      <label data-en="Specific topic (optional)" data-zh="具体知识点（可留空）">Specific topic (optional)</label>
+      <input type="text" id="topicInput" data-ph-en="e.g. Photosynthesis, Newton's 2nd law…" data-ph-zh="例如：光合作用、牛顿第二定律……">
+      <label data-en="Study material (optional)" data-zh="学习资料（可选）">Study material (optional)</label>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.md,.rtf,.csv,.html,.json,image/*" style="display:none">
+      <div class="filerow">
+        <button class="filebtn" id="fileBtn" data-en="📎 Upload a file" data-zh="📎 上传文件">📎 上传文件</button>
+        <span class="filename" id="fileName"></span>
+        <button class="filex hide" id="fileClear" aria-label="clear">✕</button>
+      </div>
+      <div class="filehint" data-en="The AI reads it first, then guides you using its content. Word (.docx), PDF, images and text (txt/md…) all work — needs Gemini connected." data-zh="AI 会先读懂它，再结合内容引导你。支持 Word（.docx）、PDF、图片、文本（txt/md 等）——需先连接 Gemini。">The AI reads it first.</div>
+      <div class="row"><button class="btn primary" id="subjectNext" disabled data-en="Next →" data-zh="下一步 →">Next →</button></div>
+    </div>
+
+    <!-- Persona -->
+    <div class="screen" id="sc-persona">
+      <h2 data-en="Who should be your student?" data-zh="让谁来当你的学生？">Who should be your student?</h2>
+      <div class="hint" data-en="Each persona asks differently — and replies in its own voice." data-zh="每种人格提问方式不同，并用自己的声音回应。">Each replies in its own voice.</div>
+      <div class="cardgrid">
+      <div class="opt" data-persona="child"><div class="ic">🧒</div><div><div class="t" data-en="The Child · cheerful voice" data-zh="小孩 · 童声">The Child · cheerful voice</div><div class="d" data-en="Total beginner — forces analogies, no jargon" data-zh="完全外行 · 逼你打比方、去术语">Forces analogies, no jargon</div></div></div>
+      <div class="opt" data-persona="peer"><div class="ic">🧑‍🎓</div><div><div class="t" data-en="The Classmate · casual voice" data-zh="同学 · 同龄声音">The Classmate · casual voice</div><div class="d" data-en="A peer — forces you to make it flow" data-zh="同龄人 · 逼你讲顺、讲清楚">Make it flow and connect</div></div></div>
+      <div class="opt" data-persona="expert"><div class="ic">🎓</div><div><div class="t" data-en="The Expert · calm, precise voice" data-zh="专家 · 沉稳声音">The Expert · calm, precise voice</div><div class="d" data-en="An insider — probes edge cases" data-zh="内行 · 追问边界与例外">Probes edge cases, precision</div></div></div>
+      </div>
+    </div>
+
+    <!-- Teaching -->
+    <div class="screen" id="sc-teach">
+      <div class="chatmeta"><div class="t" id="chatTitle">—</div><div class="c" id="turnInfo"></div></div>
+      <div class="chat" id="chatBox"></div>
+      <div class="composer">
+        <button class="iconbtn" id="micBtn" title="Voice">🎙️</button>
+        <input type="text" id="msg" data-ph-en="Type your explanation…" data-ph-zh="输入你的讲解……">
+        <button class="iconbtn send" id="sendBtn">➤</button>
+      </div>
+      <button class="linklike" id="polishBtn" data-en="✨ Help me say it more clearly" data-zh="✨ 帮我说得更清楚">✨ 帮我说得更清楚</button>
+      <div class="suggest hide" id="suggestBox"></div>
+      <div class="live" id="live"></div>
+      <div class="row">
+        <button class="btn ghost" id="restartBtn" data-en="↺ Start over" data-zh="↺ 重新开始">↺ Start over</button>
+        <button class="btn primary" id="finishBtn" data-en="Done — get report" data-zh="讲完了，看报告">Done — get report</button>
+      </div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="screen" id="sc-report">
+      <h2 data-en="Your teaching report" data-zh="本次讲课报告">Your teaching report</h2>
+      <div class="hint" id="reportSub">—</div>
+      <div class="score"><div class="n" id="scoreNum">—</div><div class="l" data-en="Overall score" data-zh="综合评分">Overall score</div></div>
+      <div class="submetrics" id="subMetrics" style="display:none"></div>
+      <div class="fgrid">
+      <div class="fcard"><div class="h" data-en="✅ What you did well" data-zh="✅ 你做得好的">✅ What you did well</div><div id="fGood"></div></div>
+      <div class="fcard"><div class="h" data-en="⚠️ Gaps to close" data-zh="⚠️ 需要补的漏洞">⚠️ Gaps to close</div><div id="fGap"></div></div>
+      <div class="fcard"><div class="h" data-en="🎯 Review next" data-zh="🎯 下次重点复习">🎯 Review next</div><div id="fNext"></div></div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="againBtn" data-en="↺ Teach again" data-zh="↺ 再讲一次">↺ Teach again</button>
+        <button class="btn primary" id="newBtn" data-en="New lesson" data-zh="开始新一课">New lesson</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="screen" id="sc-history">
+      <h2 data-en="History" data-zh="历史记录">History</h2>
+      <div class="hint" data-en="Every topic you've taught, and how you scored." data-zh="你讲过的每个知识点，以及得分。">Your past sessions.</div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- Me / Profile -->
+    <div class="screen" id="sc-profile">
+      <h2 data-en="Me" data-zh="我的">Me</h2>
+      <div class="prof"><div class="avatar" id="avatar">?</div><div><div style="font-weight:700; font-size:16px;" id="profName">—</div><div style="font-size:12px; color:var(--muted);" id="profMeta">—</div></div></div>
+      <div class="srow" id="rowStage"><span data-en="School stage" data-zh="学段">School stage</span><span class="sv" id="stageVal">—</span></div>
+      <div class="srow" id="rowLang"><span data-en="App language" data-zh="应用语言">App language</span><span class="sv" id="langVal">English ›</span></div>
+      <div class="srow" id="rowVoice"><span data-en="AI voice replies" data-zh="AI 语音回应">AI voice replies</span><span class="toggle on" id="voiceToggle"></span></div>
+      <div class="srow" id="rowVoiceGender"><span data-en="AI voice gender" data-zh="AI 语音性别">AI voice gender</span><span class="sv" id="voiceGenderVal">—</span></div>
+      <div class="srow" id="rowTheme"><span data-en="Dark mode" data-zh="深色模式">Dark mode</span><span class="toggle" id="themeToggle"></span></div>
+      <div class="srow"><span data-en="Microphone" data-zh="麦克风">Microphone</span><span class="sv" id="micStatus">—</span></div>
+      <div class="srow" id="rowKey"><span data-en="AI engine" data-zh="AI 引擎">AI engine</span><span class="sv" id="keyVal">—</span></div>
+      <div class="row"><button class="btn ghost" id="signOut" data-en="Sign out" data-zh="退出登录">Sign out</button></div>
+      <div class="privnote" data-en="Your data (history and key) is stored only in this browser, on this device — nowhere else." data-zh="你的数据（历史记录、密钥）只保存在本设备的浏览器里，不会上传到别处。">Stored locally only.</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Navigation (bottom on phones, left side on landscape/desktop) -->
+  <div class="tabbar hide" id="tabbar">
+    <div class="tab" data-tab="teach" data-go="stage"><span class="tic">🎙️</span><span data-en="Teach" data-zh="讲课">Teach</span></div>
+    <div class="tab" data-tab="history" data-go="history"><span class="tic">🕘</span><span data-en="History" data-zh="历史">History</span></div>
+    <div class="tab" data-tab="profile" data-go="profile"><span class="tic">👤</span><span data-en="Me" data-zh="我的">Me</span></div>
+  </div>
+</div>
+
+<!-- First-time use onboarding -->
+<div class="ovl hide" id="onboard">
+  <div class="ovlcard">
+    <div style="font-size:32px; text-align:center;">🧠💬</div>
+    <h3 class="ctr" data-en="Welcome! Learn in 3 steps" data-zh="欢迎！3 步学得更牢">Welcome! Learn in 3 steps</h3>
+    <div class="hint ctr" data-en="The Feynman technique: if you can teach it simply, you truly understand it." data-zh="费曼学习法：能把知识讲简单，才说明你真懂了。">The Feynman technique.</div>
+    <div class="ovlstep"><div class="num">1</div><div class="st" data-en="Pick a topic and who you'll teach — a child, a classmate, or an expert." data-zh="选一个知识点，再选讲给谁听——小孩、同学还是专家。">Pick a topic and a student.</div></div>
+    <div class="ovlstep"><div class="num">2</div><div class="st" data-en="Explain it out loud (or type). The AI plays that student and asks questions that find your gaps." data-zh="开口讲（或打字）。AI 扮演那个学生，提问戳出你的漏洞。">Explain; the AI probes your gaps.</div></div>
+    <div class="ovlstep"><div class="num">3</div><div class="st" data-en="Get a mastery score and exactly what to review next. Every session is saved." data-zh="拿到掌握度评分和下次该补的地方。每次讲课都会保存。">Get a score and what to review.</div></div>
+    <button class="btn primary" id="onboardBtn" style="margin-top:10px;" data-en="Got it — let's go" data-zh="知道了，开始吧">Got it — let's go</button>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   Feynman AI — full single-page web demo
+   Structured in three parts: (1) data/state  (2) UI & routing  (3) teaching "brain"
+   The UI and the "brain" are separated: later, swap part (3) for a real LLM and parts (1)(2) stay untouched.
+   =========================================================== */
+(function(){
+  "use strict";
+
+  /* ---------- (1) State ---------- */
+  var app = {
+    lang:'en', user:null, stage:null,
+    subject:null, topic:'', persona:null,
+    voiceOn:true, voiceGender:'female', theme:'light', apiKey:'', uploadFile:null,
+    sessions:[],            // session history
+    cur:null                // the current teaching session {turns,userMsgs,askedKeys,history}
+  };
+
+  /* Subjects differ by school stage (implements the "stage drives subjects" design from the sketch) */
+  var SUBJECTS = {
+    middle:[{i:'📐',en:'Math',zh:'数学'},{i:'🔬',en:'Science',zh:'科学'},{i:'🧬',en:'Biology',zh:'生物'},
+            {i:'📜',en:'History',zh:'历史'},{i:'🌍',en:'Geography',zh:'地理'},{i:'✍️',en:'Chinese',zh:'语文'},{i:'🔤',en:'English',zh:'英语'}],
+    high:[{i:'📐',en:'Math',zh:'数学'},{i:'🧪',en:'Physics',zh:'物理'},{i:'⚗️',en:'Chemistry',zh:'化学'},{i:'🧬',en:'Biology',zh:'生物'},
+          {i:'📜',en:'History',zh:'历史'},{i:'🌍',en:'Geography',zh:'地理'},{i:'✍️',en:'Chinese',zh:'语文'},{i:'🔤',en:'English',zh:'英语'}]
+  };
+
+  /* ---------- Multilingual copy (dynamic strings) ---------- */
+  var T = {
+    en:{ you:'You',
+      openers:{child:["Yay, a lesson! Okay — what is {topic}? Tell me like I'm little.","Ooh {topic}! I don't know anything about it. Start from the very beginning?"],
+        peer:["Cool, {topic}. I kind of missed this class — walk me through it?","Okay {topic} — explain it like you're prepping me for the test."],
+        expert:["Let's discuss {topic}. Start with your core claim and we'll examine it.","{topic}. Give me your explanation and I'll probe the details."]},
+      probes:{child:["Wait, but why does that happen?","Ooh, what's a \"{kw}\"? I've never heard that word!","Hmm, could you tell it like a little story?","Can you give me an example I'd see at home?","That's a big word — can you say it simpler?"],
+        peer:["Hold on, why is that actually true?","How does \"{kw}\" fit with what you said before?","Can you boil that down to one sentence for me?","Okay, but how would that come up on a test?","I didn't totally follow — can you put it another way?"],
+        expert:["Interesting — what happens at the edge cases there?","Is there a situation where that doesn't hold?","Can you walk me through how \"{kw}\" actually works, step by step?","How do we know that's the cause and not just a coincidence?","What's the evidence behind that?"]},
+      nudge:["That's pretty short — can you add a bit more?","Keep going, I want the whole picture.","Tell me more about that part."],
+      finishHint:"(You've explained a lot — hit \"Done\" whenever you're ready.)",
+      turn:function(n){return 'Exchange '+n;},
+      reportSub:function(tp,pn,n){return tp+' · taught to '+pn+' · '+n+' exchanges';},
+      good:{engaged:"You kept going across {n} exchanges — active recall at work.",detail:"You gave real detail (~{w} words), not one-liners.",analogy:"You used an everyday example — that makes ideas stick.",why:"You answered the \"why\", not just the \"what\"."},
+      gap:{short:"Some answers were brief — gaps hide in the parts you rush.",why:"Push on \"why it happens\", not only \"what happens\".",analogy:"Try one concrete analogy — if you can't, revisit it.",unanswered:"The question about \"{kw}\" didn't get a full answer."},
+      next:{a:"Re-teach \"{topic}\" from scratch without looking.",b:"Write the one sentence you found hardest to explain.",c:"Find a real example of \"{topic}\" and explain it."},
+      persona:{child:'The Child',peer:'The Classmate',expert:'The Expert'},
+      stageName:{middle:'Middle School',high:'High School'},
+      micUnsupported:"This browser doesn't support voice input — please type.",
+      micListening:"● Listening… take your time, pause freely — tap the mic again when you're done.",
+      micReady:"Tip: tap 🎙️ to add your voice (pauses are fine), then hit ➤ to send.",
+      emptyHist:"No sessions yet. Teach your first topic!",
+      teachNow:"Start teaching" },
+    zh:{ you:'你',
+      openers:{child:["耶，上课啦！那……{topic}是什么呀？讲得像给小朋友听一样。","哦哦{topic}！我一点都不懂，从最开头讲起好吗？"],
+        peer:["好，{topic}。我那节课没太听懂，能给我捋一遍吗？","{topic}嘛——你就当帮我备考，给我讲讲。"],
+        expert:["我们来谈谈{topic}。先说你的核心观点，我们逐条检验。","{topic}。把你的解释说出来，我来追问细节。"]},
+      probes:{child:["咦，那为什么会这样呀？","「{kw}」是什么呀？我都没听过这个词～","嗯…能像讲故事那样说给我听吗？","能举个我在家里能见到的例子吗？","这个词好难哦，能说得简单点吗？"],
+        peer:["等下，这个为什么是对的呀？","「{kw}」和你前面说的怎么连起来的？","能帮我用一句话总结一下吗？","那这个一般考试会怎么考？","我有点没跟上，能换个说法吗？"],
+        expert:["有意思，那在极端情况下会怎样？","有没有它不成立的情形？","「{kw}」具体是怎么一步步起作用的，能展开讲讲吗？","我们怎么确定这是原因，而不是巧合？","这个结论有什么依据吗？"]},
+      nudge:["有点短哦——能再多讲一点吗？","继续呀，我想听完整的。","那部分能再展开说说吗？"],
+      finishHint:"（你已经讲了不少——随时点“讲完了”。）",
+      turn:function(n){return '第 '+n+' 轮';},
+      reportSub:function(tp,pn,n){return tp+' · 讲给'+pn+' · 共 '+n+' 轮';},
+      good:{engaged:"你连续讲了 {n} 轮——这正是“主动回忆”在起作用。",detail:"你给了实打实的细节（约 {w} 字），不是一句话带过。",analogy:"你用了生活化的例子——这正是让知识记住的关键。",why:"你回答了“为什么”，而不只是“是什么”。"},
+      gap:{short:"有些回答比较简短——漏洞往往藏在你一带而过的地方。",why:"多往“为什么会这样”推，而不只是“发生了什么”。",analogy:"试着给一个具体比喻——给不出正说明该再复习。",unanswered:"“{kw}”那个问题，你还没完整回答。"},
+      next:{a:"不看资料，把“{topic}”从头再讲一遍。",b:"写下你觉得最难讲清楚的那一句话。",c:"找一个“{topic}”的真实例子，把它讲出来。"},
+      persona:{child:'小孩',peer:'同学',expert:'专家'},
+      stageName:{middle:'初中生',high:'高中生'},
+      micUnsupported:"此浏览器不支持语音输入，请用文字。",
+      micListening:"● 正在聆听……慢慢说、可以停顿——说完再点一下麦克风。",
+      micReady:"提示：点 🎙️ 语音输入（可停顿），说完点 ➤ 发送。",
+      emptyHist:"还没有记录。去讲你的第一课吧！",
+      teachNow:"开始讲课" }
+  };
+
+  /* ---------- Small utilities ---------- */
+  function $(id){return document.getElementById(id);}
+  function pick(a){return a[Math.floor(Math.random()*a.length)];}
+  function fill(s,m){return s.replace(/\{(\w+)\}/g,function(_,k){return m[k]!==undefined?m[k]:('{'+k+'}');});}
+  function wordCount(s){return s.split(/\s+/).filter(Boolean).length+(s.match(/[一-龥]/g)||[]).length;}
+  function longestWord(str){
+    var p=str.replace(/[.,!?;:"'()]/g,' ').split(/\s+/).filter(Boolean);
+    if(p.length){var w=p.sort(function(a,b){return b.length-a.length;})[0]; if(w&&w.length>=4)return w;}
+    var cj=str.match(/[一-龥]{2,4}/g); if(cj&&cj.length){return cj.sort(function(a,b){return b.length-a.length;})[0].slice(0,4);}
+    return '';
+  }
+  function tr(){return T[app.lang];}
+
+  /* ---------- Local storage (history persisted in the browser) ---------- */
+  function saveSessions(){ try{ localStorage.setItem('feynman_sessions', JSON.stringify(app.sessions)); }catch(e){} }
+  function loadSessions(){ try{ var s=localStorage.getItem('feynman_sessions'); if(s) app.sessions=JSON.parse(s); }catch(e){ app.sessions=[]; } }
+
+  /* ---------- (2) Routing / UI ---------- */
+  var FLOW={stage:0,subject:1,persona:2,teach:3,report:4};
+  var TABOF={stage:'teach',subject:'teach',persona:'teach',teach:'teach',report:'teach',history:'history',profile:'profile'};
+
+  function go(id){
+    if(id==='login' && app.user && app.user.name){ id='stage'; }   // returning user already named — skip the name screen
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+    $('sc-'+id).classList.add('active');
+    var inFlow = id in FLOW;
+    $('dots').classList.toggle('hide', !inFlow);
+    if(inFlow){ for(var i=0;i<5;i++){ $('d'+i).classList.toggle('on', i===FLOW[id]); } }
+    var afterLogin = (['landing','login','gverify','everify'].indexOf(id)===-1);
+    $('tabbar').classList.toggle('hide', !afterLogin);
+    var t=TABOF[id];
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on', x.getAttribute('data-tab')===t);});
+    if(id==='subject') renderSubjects();
+    if(id==='history') renderHistory();
+    if(id==='profile') renderProfile();
+    if(id==='teach') window.gtag&&gtag('event','feynman_start_teaching');
+    if(id==='report') window.gtag&&gtag('event','feynman_get_report');
+    $('bodyEl').scrollTop=0;
+  }
+
+  function setLang(l){
+    app.lang=l;
+    document.querySelectorAll('[data-en]').forEach(function(e){var v=e.getAttribute('data-'+l); if(v!==null) e.textContent=v;});
+    document.querySelectorAll('[data-ph-en]').forEach(function(e){e.setAttribute('placeholder', e.getAttribute('data-ph-'+l)||'');});
+    document.querySelectorAll('#langSeg button').forEach(function(b){b.classList.toggle('on', b.getAttribute('data-l')===l);});
+    $('langVal').textContent = (l==='zh'?'中文':'English')+' ›';
+    if($('sc-subject').classList.contains('active')) renderSubjects();
+    if($('sc-history').classList.contains('active')) renderHistory();
+    if($('sc-profile').classList.contains('active')) renderProfile();
+  }
+
+  /* ---------- User: no account — just a display name, saved on this device ---------- */
+  function saveUser(){ try{ localStorage.setItem('feynman_user', JSON.stringify(app.user)); }catch(e){} }
+  function loadUser(){ try{ var u=localStorage.getItem('feynman_user'); if(u) app.user=JSON.parse(u); }catch(e){} }
+  function signIn(name,email,pic){ app.user={name:name,email:email||'',pic:pic||''}; saveUser(); go('stage'); }
+
+  $('enterBtn').addEventListener('click',function(){
+    var nm=$('dispName').value.trim() || (app.lang==='zh'?'同学':'Friend');
+    var em=$('email').value.trim();
+    signIn(nm, (em.indexOf('@')>0 ? em : ''));
+  });
+  $('dispName').addEventListener('keydown',function(e){ if(e.key==='Enter') $('enterBtn').click(); });
+
+  /* ---------- School stage ---------- */
+  document.querySelectorAll('[data-stage]').forEach(function(o){
+    o.addEventListener('click',function(){ app.stage=this.getAttribute('data-stage'); go('subject'); });
+  });
+
+  /* ---------- Subject ---------- */
+  function renderSubjects(){
+    var list = SUBJECTS[app.stage]||SUBJECTS.high;
+    var g=$('subjectGrid'); g.innerHTML='';
+    list.forEach(function(s){
+      var c=document.createElement('div'); c.className='chip'; c.textContent=s.i+' '+s[app.lang];
+      c.addEventListener('click',function(){
+        document.querySelectorAll('#subjectGrid .chip').forEach(function(x){x.classList.remove('sel');});
+        c.classList.add('sel'); app.subject=s; checkSubject();
+      });
+      if(app.subject && app.subject.en===s.en) c.classList.add('sel');
+      g.appendChild(c);
+    });
+    checkSubject();
+  }
+  function checkSubject(){ $('subjectNext').disabled = !app.subject; }
+  $('subjectNext').addEventListener('click',function(){
+    app.topic = $('topicInput').value.trim() || app.subject[app.lang];
+    go('persona');
+  });
+
+  /* Upload study material */
+  $('fileBtn').addEventListener('click',function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change',function(){ setFile(this.files && this.files[0]); });
+  $('fileClear').addEventListener('click',function(){ setFile(null); $('fileInput').value=''; });
+  function setFile(f){
+    if(f && f.size > 12*1024*1024){ $('fileName').textContent = app.lang==='zh'?'文件太大（请小于 12MB）':'File too large (<12MB)'; app.uploadFile=null; $('fileClear').classList.remove('hide'); return; }
+    app.uploadFile = f || null;
+    $('fileName').textContent = f ? f.name : '';
+    $('fileClear').classList.toggle('hide', !f);
+  }
+
+  /* ---------- Persona ---------- */
+  document.querySelectorAll('[data-persona]').forEach(function(o){
+    o.addEventListener('click',function(){ app.persona=this.getAttribute('data-persona'); startTeach(); });
+  });
+
+  /* ---------- (3) Teaching "brain" ---------- */
+  function emoji(p){ return p==='child'?'🧒':p==='peer'?'🧑‍🎓':'🎓'; }
+  function addBubble(who,text,cls){
+    var b=document.createElement('div'); b.className='bubble '+cls;
+    var w=document.createElement('div'); w.className='who'; w.textContent=who;
+    var s=document.createElement('div'); s.className='bt'; s.textContent=text;
+    b.appendChild(w); b.appendChild(s);
+    var box=$('chatBox'); box.appendChild(b); box.scrollTop=box.scrollHeight;
+    return b;
+  }
+  function aiSay(text){
+    var b=addBubble(tr().persona[app.persona]+' 🔊', '', 'ai');
+    var el=b.querySelector('.bt');
+    if(app.voiceOn && (app.proxyUrl||app.apiKey)){ el.innerHTML='<span class="typing">…</span>'; }  // brief cue while the voice is generated, then text appears WITH the voice
+    else { el.textContent=text; }                                                                    // no neural audio to sync with → show text now
+    speak(text, el);
+  }
+  function meSay(text){ addBubble(tr().you, text, 'me'); }
+
+  function startTeach(){
+    app.cur={turns:0,userMsgs:[],askedKeys:[],history:[]};
+    $('chatBox').innerHTML=''; $('msg').value=''; $('suggestBox').classList.add('hide');
+    $('live').textContent = aiReady()
+      ? (app.lang==='zh'?'已连接真模型，AI 会真正听懂并引导你。':'Connected — the AI truly understands and guides you.')
+      : (app.lang==='zh'?'演示大脑模式。到“我的”里添加 Gemini 密钥可启用真模型。':'Demo-brain mode. Add a Gemini key in Me to enable the real model.');
+    $('chatTitle').textContent = emoji(app.persona)+' '+(app.uploadFile?'📎 ':'')+app.topic;
+    updateTurn(); go('teach');
+    if(app.uploadFile && aiReady()){ addFileContext(app.uploadFile, beginDialogue); }
+    else {
+      if(app.uploadFile && !aiReady()){ $('live').textContent = app.lang==='zh'?'已选文件，但需先连接真模型，AI 才能读它。':'File selected, but the AI needs to be connected to read it.'; }
+      beginDialogue();
+    }
+  }
+  function fileNote(){
+    return app.lang==='zh'
+      ? '这是学生上传的学习资料。请先仔细看懂，理解他要讨论/讲解的内容，再在后续提问中结合它来引导他；不要直接复述资料原文。'
+      : 'This is study material the student uploaded. Read and understand it first, then use it to guide your follow-up questions — do not just quote it back.';
+  }
+  function docxToText(buf){
+    // Extract readable text from a .docx (a ZIP of XML) fully in the browser — no libraries, native inflate.
+    return new Promise(function(resolve,reject){
+      try{
+        var b=new Uint8Array(buf);
+        function u16(o){ return b[o]|(b[o+1]<<8); }
+        function u32(o){ return (b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0; }
+        var eocd=-1, min=Math.max(0,b.length-22-65536);
+        for(var i=b.length-22;i>=min;i--){ if(u32(i)===0x06054b50){ eocd=i; break; } }
+        if(eocd<0) return reject('not zip');
+        var count=u16(eocd+10), p=u32(eocd+16), tgt=null;
+        for(var n=0;n<count;n++){
+          if(u32(p)!==0x02014b50) break;
+          var meth=u16(p+10), csize=u32(p+20), nlen=u16(p+28), xlen=u16(p+30), clen=u16(p+32), lho=u32(p+42), name='';
+          for(var j=0;j<nlen;j++) name+=String.fromCharCode(b[p+46+j]);
+          if(name==='word/document.xml'){ tgt={meth:meth,csize:csize,lho:lho}; break; }
+          p+=46+nlen+xlen+clen;
+        }
+        if(!tgt) return reject('no document.xml');
+        var lp=tgt.lho; if(u32(lp)!==0x04034b50) return reject('bad header');
+        var start=lp+30+u16(lp+26)+u16(lp+28), cdata=b.slice(start, start+tgt.csize);
+        function toText(xmlBytes){
+          var xml=new TextDecoder('utf-8').decode(xmlBytes);
+          var t=xml.replace(/<\/w:p>/g,'\n').replace(/<w:tab\b[^>]*\/?>/g,'\t').replace(/<[^>]+>/g,'');
+          t=t.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&#(\d+);/g,function(_,d){return String.fromCharCode(+d);});
+          resolve(t.replace(/\n{3,}/g,'\n\n').trim());
+        }
+        if(tgt.meth===0){ toText(cdata); }                        // stored (uncompressed)
+        else if(typeof DecompressionStream!=='undefined'){        // deflate — inflate natively
+          new Response(new Blob([cdata]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()
+            .then(function(ab){ toText(new Uint8Array(ab)); }).catch(reject);
+        } else { reject('no DecompressionStream'); }
+      }catch(e){ reject(e); }
+    });
+  }
+  function addFileContext(file, done){
+    $('live').textContent = app.lang==='zh'?'AI 正在读取你的资料…':'AI is reading your file…';
+    var name=(file.name||'').toLowerCase(), type=file.type||'';
+    function okMsg(){ $('live').textContent=app.lang==='zh'?'已读取你的资料，AI 会结合它来引导你。':'Read your file — the AI will use it to guide you.'; }
+    function fail(msg){ $('live').textContent = msg || (app.lang==='zh'?'读取文件失败，直接开始。':'Could not read file — starting anyway.'); done(); }
+    function pushText(t){ t=(t||'').slice(0,12000); if(!t.trim()){ fail(); return; }
+      app.cur.history.push({ role:'user', text:'[uploaded study material]', parts:[ {text:fileNote()+'\n\n'+t} ] }); okMsg(); done(); }
+    function pushInline(b64){ app.cur.history.push({ role:'user', text:'[uploaded study material]',
+      parts:[ {inline_data:{mime_type:type||'application/octet-stream', data:b64}}, {text:fileNote()} ] }); okMsg(); done(); }
+    var isImg=/^image\//.test(type), isPdf=type==='application/pdf'||/\.pdf$/.test(name);
+    var isDocx=/\.docx$/.test(name)||type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    var isOldDoc=/\.doc$/.test(name)&&!isDocx;
+    var reader=new FileReader(); reader.onerror=function(){ fail(); };
+    if(isImg||isPdf){ reader.onload=function(){ pushInline(String(reader.result||'').split(',')[1]||''); }; reader.readAsDataURL(file); }
+    else if(isDocx){ reader.onload=function(){ docxToText(reader.result).then(pushText).catch(function(){ fail(app.lang==='zh'?'这个 Word 文件读不出文字，建议改存成 PDF 再传。':'Could not read this Word file — try saving it as a PDF.'); }); }; reader.readAsArrayBuffer(file); }
+    else if(isOldDoc){ fail(app.lang==='zh'?'旧版 .doc 暂不支持，请用 .docx 或 PDF。':'Legacy .doc isn\'t supported — use .docx or PDF.'); }
+    else { reader.onload=function(){ pushText(String(reader.result||'')); }; reader.readAsText(file); }
+  }
+  function hasFileContext(){ return app.cur.history.some(function(h){ return h.text==='[uploaded study material]'; }); }
+  function beginDialogue(){
+    function fallback(){ var o=fill(pick(tr().openers[app.persona]),{topic:app.topic}); aiSay(o); app.cur.history.push({role:'model',text:o}); $('msg').focus(); }
+    if(aiReady() && hasFileContext()){
+      showThinking(true);
+      var sys=teachSystem()+' For THIS first message only: briefly say you have read their uploaded material, then warmly invite them to start teaching the topic in their own words. One short sentence.';
+      callGemini(sys, geminiContents()).then(function(q){
+        showThinking(false);
+        if(!q){ fallback(); return; }
+        aiSay(q); app.cur.history.push({role:'model',text:q}); $('msg').focus();
+      }).catch(function(){ showThinking(false); fallback(); });
+    } else { fallback(); }
+  }
+  function updateTurn(){ $('turnInfo').textContent = tr().turn(app.cur.turns); }
+
+  function send(){
+    var v=$('msg').value.trim(); if(!v) return;
+    meSay(v); $('msg').value=''; $('suggestBox').classList.add('hide');
+    app.cur.turns++; app.cur.userMsgs.push(v); app.cur.history.push({role:'user',text:v}); updateTurn();
+    if(aiReady()){ respondAI(v); }
+    else { var wc=wordCount(v); setTimeout(function(){ demoRespond(v,wc); }, 450); }
+  }
+
+  /* —— Real model: Gemini —— */
+  var GEMINI_MODEL='gemini-2.5-flash';
+  var PROXY_URL='/api/gemini';   // ← After deploying the "proxy", paste its URL here (e.g. https://xxx.workers.dev). Once filled, nobody needs their own key.
+  function aiReady(){ return !!(app.proxyUrl || app.apiKey); }   // having a proxy OR a personal key both count as "connected"
+  function personaBrief(){
+    var p=app.persona;
+    if(app.lang==='zh') return p==='child'?'一个好奇的小孩，完全外行，词汇简单，老问“为什么”，要求打比方，不懂术语。':p==='peer'?'一个同龄同学，水平相当，会指出哪里没跟上，要求逻辑讲顺、前后连起来。':'一个该领域专家，追问边界条件、例外、精确机制和证据，逼对方讲准讲深。';
+    return p==='child'?'a curious young child, a total beginner with simple words, who keeps asking "why", wants analogies, and knows no jargon.':p==='peer'?"a same-age classmate at a similar level who points out what didn't follow and pushes for logic and connections.":'a domain expert who probes boundary conditions, exceptions, precise mechanisms and evidence.';
+  }
+  function teachSystem(){
+    var stage = app.stage==='middle'?'middle-school':'high-school';
+    var lang = app.lang==='zh'?'Always reply in Simplified Chinese.':'Always reply in English.';
+    var subj = app.subject ? app.subject[app.lang] : app.topic;
+    return 'You are role-playing as '+personaBrief()+' The user is a '+stage+' student practising the Feynman technique: they are TEACHING you the topic "'+app.topic+'" (subject area: '+subj+'). '
+      + 'Talk like a real person in a natural, flowing, one-on-one conversation — never robotic or formulaic, and NEVER repeat a question you already asked. '
+      + 'Really LISTEN and show it: open with one quick, genuine beat that names the specific idea or word they just used (e.g. "等等，你刚说的『斜边』…" / "oh wait, the part about…"), so it feels like a real back-and-forth. '
+      + 'Then ask ONE follow-up that follows LOGICALLY from their last point: take the single most important thing they said and probe the very next link in the chain — the missing "why", the mechanism, the next step, a consequence, an edge case, or a likely misconception. Across the session your questions should build on each other like a real train of thought, not jump around. '
+      + 'Stay deeply anchored to THIS subject ('+subj+') and topic ("'+app.topic+'"): make each question specific to the actual content — for math push the reasoning and steps, for history the causes/evidence/significance, for science the mechanism or a concrete example. If they uploaded study material, tie your questions to what that material actually covers and reference its specific ideas; never stay generic. '
+      + 'Keep nudging them toward SIMPLER, plainer language: whenever they get convoluted, jargon-heavy or rambling, gently ask them to say it more simply or with an everyday example — that is the whole point of the Feynman technique. '
+      + 'Vary your wording every time and stay coherent. Stay fully in character for your persona and difficulty, warm and curious like a real learner. Do NOT lecture and do NOT give away the answer. Ask EXACTLY ONE question — end with a single question mark. '
+      + 'If you paraphrase their point, keep it factually accurate; if you are playing not-understanding, voice it as honest uncertainty ("嗯…我有点糊涂" / "wait, I\'m not sure I follow"), and NEVER confidently state a wrong version of the concept (that would teach them something false). Keep it to 1–2 short, natural sentences. '+lang;
+  }
+  function geminiContents(){ return app.cur.history.map(function(h){ return {role:h.role, parts: h.parts || [{text:h.text}]}; }); }
+  function callGemini(system, contents, gen){
+    // gemini-2.5-flash "thinks" by default, which silently consumed maxOutputTokens and truncated replies
+    // mid-sentence (often leaving an empty/cut answer). Disable thinking and give a roomier output budget so
+    // every reply comes back complete and coherent. Callers can still override any field via `gen`.
+    var cfg = Object.assign({temperature:0.8, maxOutputTokens:400, thinkingConfig:{thinkingBudget:0}}, gen||{});
+    var body={ contents:contents, systemInstruction:{parts:[{text:system}]}, generationConfig: cfg };
+    var url = app.proxyUrl ? app.proxyUrl   // if there's a proxy, route through it (the key stays server-side, not exposed)
+            : 'https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent?key='+encodeURIComponent(app.apiKey);
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok){ return r.text().then(function(){ throw new Error('HTTP '+r.status); }); } return r.json(); })
+      .then(function(d){ var c=(d.candidates||[])[0]||{}; var ps=((c.content||{}).parts)||[]; return ps.map(function(p){return p.text||'';}).join('').trim(); });
+  }
+  function showThinking(on){
+    var ex=$('thinkingB');
+    if(on){ if(ex) return; var b=document.createElement('div'); b.className='bubble ai'; b.id='thinkingB';
+      b.innerHTML='<div class="who">'+tr().persona[app.persona]+'</div><span class="typing">'+(app.lang==='zh'?'思考中…':'thinking…')+'</span>';
+      $('chatBox').appendChild(b); $('chatBox').scrollTop=$('chatBox').scrollHeight;
+    } else if(ex){ ex.parentNode.removeChild(ex); }
+  }
+  function respondAI(userText){
+    showThinking(true); $('sendBtn').disabled=true;
+    callGemini(teachSystem(), geminiContents()).then(function(q){
+      showThinking(false); $('sendBtn').disabled=false;
+      if(!q){ demoRespond(userText, wordCount(userText)); return; }
+      aiSay(q); app.cur.history.push({role:'model',text:q});
+    }).catch(function(e){
+      showThinking(false); $('sendBtn').disabled=false;
+      $('live').textContent = app.lang==='zh'?'⚠️ 连接模型失败，暂用演示大脑（检查密钥/网络）。':'⚠️ Model call failed — using demo brain (check key/network).';
+      demoRespond(userText, wordCount(userText));
+    });
+  }
+
+  /* —— Demo brain (fallback when there's no key / on error) —— */
+  function demoRespond(userText,wc){
+    var reply;
+    if(wc<6 && Math.random()<0.8){ reply=pick(tr().nudge); }
+    else{
+      var kw=longestWord(userText); var pool=tr().probes[app.persona].slice(); var chosen;
+      if(kw){ var kp=pool.filter(function(p){return p.indexOf('{kw}')>=0;}); chosen=(Math.random()<0.5&&kp.length)?pick(kp):pick(pool); }
+      else{ chosen=pick(pool.filter(function(p){return p.indexOf('{kw}')<0;})); }
+      if(chosen.indexOf('{kw}')>=0 && kw) app.cur.askedKeys.push(kw);
+      reply=fill(chosen,{kw:kw});
+    }
+    aiSay(reply); app.cur.history.push({role:'model',text:reply});
+    if(app.cur.turns>=4){ setTimeout(function(){ aiSay(tr().finishHint); }, 600); }
+  }
+  $('sendBtn').addEventListener('click',send);
+  $('msg').addEventListener('keydown',function(e){ if(e.key==='Enter') send(); });
+  $('restartBtn').addEventListener('click',function(){ go('subject'); });
+
+  /* —— Expression helper: help the student say things more clearly and fluently —— */
+  function showSuggest(state, text){
+    var box=$('suggestBox'); box.classList.remove('hide');
+    if(state==='loading'){ box.innerHTML='<div class="sl">'+(app.lang==='zh'?'✨ 正在帮你润色…':'✨ Polishing…')+'</div>'; return; }
+    if(state==='note'){ box.innerHTML='<div class="sl">✨</div>'+escapeHtml(text); return; }
+    var useLbl=app.lang==='zh'?'用这句':'Use this';
+    var title=app.lang==='zh'?'✨ 更清楚的说法':'✨ A clearer way to say it';
+    box.innerHTML='<div class="sl">'+title+'</div>'+escapeHtml(text)+'<div><button class="sbtn" id="useSuggest">'+useLbl+'</button></div>';
+    $('useSuggest').addEventListener('click',function(){ $('msg').value=text; box.classList.add('hide'); $('msg').focus(); });
+  }
+  function polishExpression(){
+    var text=$('msg').value.trim();
+    if(!text && app.cur && app.cur.userMsgs.length) text=app.cur.userMsgs[app.cur.userMsgs.length-1];
+    if(!text){ showSuggest('note', app.lang==='zh'?'先输入或讲一句，我再帮你说得更清楚。':'Type or say something first, then I can help.'); return; }
+    if(!aiReady()){ showSuggest('note', app.lang==='zh'?'表达助手需要先连接真模型（在“我的”里添加密钥，或部署中转站）。':'Phrasing help needs the AI connected (add a key in “Me”, or deploy the proxy).'); return; }
+    showSuggest('loading');
+    var sys = app.lang==='zh'
+      ? '你是一个友好的语言表达教练。把学生这句讲解改写得更清楚、更流利、更有条理，保持原意和他的水平；不要加入新知识，也不要纠正学科对错。只输出改写后的版本，1-2句，用简体中文。'
+      : 'You are a friendly language coach. Rewrite the student\'s explanation to be clearer, more fluent and better organised, keeping their meaning and level. Do not add new facts and do not correct subject content. Output ONLY the improved version, 1-2 sentences, in English.';
+    callGemini(sys, [{role:'user',parts:[{text:text}]}], {temperature:0.5, maxOutputTokens:160}).then(function(out){
+      if(!out){ showSuggest('note', app.lang==='zh'?'暂时没拿到建议，再试一次。':'No suggestion — try again.'); return; }
+      showSuggest('ok', out);
+    }).catch(function(){ showSuggest('note', app.lang==='zh'?'连接失败，检查密钥/网络。':'Connection failed — check key/network.'); });
+  }
+  $('polishBtn').addEventListener('click', polishExpression);
+
+  /* ---------- Feedback report ---------- */
+  function buildReport(){
+    if(!app.cur || app.cur.turns<1){ return; }
+    if(aiReady()){ geminiReport(); } else { buildReportDemo(); }
+  }
+  function reportLoading(){
+    go('report'); $('scoreNum').textContent='…';
+    $('reportSub').textContent = app.lang==='zh'?'AI 正在批改…':'AI is grading…';
+    list('fGood',[]); list('fGap',[]); list('fNext',[]);
+  }
+  function parseJSON(t){ try{ return JSON.parse(t); }catch(e){ var m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch(e2){} } return null; } }
+  function clampScore(v,def){ var n=parseInt(v,10); if(isNaN(n)) n=def; return Math.max(1,Math.min(10,n)); }
+  function geminiReport(){
+    reportLoading();
+    var stage=app.stage==='middle'?'middle-school':'high-school';
+    var subj = app.subject ? app.subject[app.lang] : app.topic;
+    var lang=app.lang==='zh'?'Write every feedback string in Simplified Chinese.':'Write every feedback string in English.';
+    var sys='You are an expert tutor evaluating how well a '+stage+' student taught the topic "'+app.topic+'" (subject: '+subj+') using the Feynman technique. Judge ONLY from the transcript, specific to '+subj+', and reference what they actually said. Grade TWO dimensions, each an integer 1-10: "fluency" = how clear, simple and well-organised their LANGUAGE was (reward plain, easy-to-follow explanations and everyday examples; penalise convoluted or jargon-heavy wording), and "mastery" = how well they truly understand the '+subj+' content (correctness, depth, coverage). Then give an overall "score" 1-10. Return STRICT JSON only (no markdown): {"score":<int 1-10>,"fluency":<int 1-10>,"mastery":<int 1-10>,"good":[<2-3 short strings>],"gap":[<2-3 short strings>],"next":[<2-3 short strings>]}. "good"=what they did well; "gap"=misconceptions or missing pieces; "next"=concrete things to review next. '+lang;
+    var transcript=app.cur.history.map(function(h){ return (h.role==='user'?'STUDENT: ':'AI: ')+h.text; }).join('\n');
+    callGemini(sys, [{role:'user',parts:[{text:transcript}]}], {temperature:0.4, maxOutputTokens:1024, responseMimeType:'application/json'})
+      .then(function(txt){
+        var obj=parseJSON(txt); if(!obj) throw new Error('bad json');
+        var fl=clampScore(obj.fluency,5), ma=clampScore(obj.mastery,5);
+        var sc=isNaN(parseInt(obj.score,10)) ? Math.round((fl+ma)/2) : clampScore(obj.score,Math.round((fl+ma)/2));
+        var session={ topic:app.topic, persona:app.persona, score:sc, fluency:fl, mastery:ma, turns:app.cur.turns,
+          date:new Date().toLocaleDateString(),
+          good:(obj.good||[]).slice(0,4), gap:(obj.gap||[]).slice(0,4), next:(obj.next||[]).slice(0,4) };
+        app.sessions.unshift(session); saveSessions(); showReport(session);
+      })
+      .catch(function(e){ buildReportDemo(); });
+  }
+  function buildReportDemo(){
+    var msgs=app.cur.userMsgs, all=msgs.join(' ');
+    var tw=msgs.reduce(function(a,m){return a+wordCount(m);},0);
+    var avg=tw/Math.max(1,msgs.length);
+    var hasAn=/like|imagine|example|for instance|比如|就像|想象|例如|好比/i.test(all);
+    var hasWhy=/because|since|so that|due to|因为|由于|所以|导致/i.test(all);
+    var conn=/because|since|so|then|therefore|first|next|因为|所以|因此|于是|首先|然后|接着/i.test(all);
+    // Fluency: whether the language is clear, coherent, and has examples
+    var fl=4; if(avg>=12)fl+=1; if(avg>=22)fl+=1; if(hasAn)fl+=2; if(conn)fl+=1; if(app.cur.turns>=3)fl+=1; fl=Math.max(1,Math.min(10,fl));
+    // Mastery: whether the content is on point, has the "why", and is explained enough
+    var ma=3; ma+=Math.min(3,app.cur.turns); if(avg>=20)ma+=1; if(hasWhy)ma+=2; if(hasAn)ma+=1; ma=Math.max(1,Math.min(10,ma));
+    var sc=Math.max(1,Math.min(10,Math.round((fl+ma)/2)));
+    var g=[]; g.push(fill(tr().good.engaged,{n:app.cur.turns}));
+    if(avg>=15)g.push(fill(tr().good.detail,{w:tw})); if(hasAn)g.push(tr().good.analogy); if(hasWhy)g.push(tr().good.why);
+    var gp=[]; if(avg<15)gp.push(tr().gap.short); if(!hasWhy)gp.push(tr().gap.why); if(!hasAn)gp.push(tr().gap.analogy);
+    if(app.cur.askedKeys.length)gp.push(fill(tr().gap.unanswered,{kw:app.cur.askedKeys[app.cur.askedKeys.length-1]}));
+    if(!gp.length)gp.push(tr().gap.why); gp=gp.slice(0,3);
+    var nx=[fill(tr().next.a,{topic:app.topic}),tr().next.b,fill(tr().next.c,{topic:app.topic})];
+    var session={ topic:app.topic, persona:app.persona, score:sc, fluency:fl, mastery:ma, turns:app.cur.turns,
+      date:new Date().toLocaleDateString(), good:g, gap:gp, next:nx };
+    app.sessions.unshift(session); saveSessions(); showReport(session);
+  }
+  function showReport(s){
+    $('scoreNum').innerHTML = s.score+'<span style="font-size:18px;">/10</span>';
+    $('reportSub').textContent = tr().reportSub(s.topic, tr().persona[s.persona], s.turns);
+    var sm=$('subMetrics');
+    if(s.fluency || s.mastery){
+      var fL=app.lang==='zh'?'流利度':'Fluency', mL=app.lang==='zh'?'熟悉度':'Mastery';
+      sm.innerHTML='<div class="sm"><span class="smk">'+fL+'</span><span class="smv">'+(s.fluency||'-')+'/10</span></div>'
+                  +'<div class="sm"><span class="smk">'+mL+'</span><span class="smv">'+(s.mastery||'-')+'/10</span></div>';
+      sm.style.display='flex';
+    } else { sm.innerHTML=''; sm.style.display='none'; }
+    list('fGood',s.good); list('fGap',s.gap); list('fNext',s.next);
+    go('report');
+  }
+  function list(id,items){ var c=$(id); c.innerHTML=''; items.forEach(function(it){var d=document.createElement('div'); d.className='li'; d.textContent=it; c.appendChild(d);}); }
+  $('finishBtn').addEventListener('click',buildReport);
+  $('againBtn').addEventListener('click',startTeach);
+  $('newBtn').addEventListener('click',function(){ go('subject'); });
+
+  /* ---------- History ---------- */
+  // Connect a series of points into a smooth curve (Catmull-Rom to Bezier), instead of a polyline
+  function smoothPath(pts){
+    if(pts.length<2) return pts.length?('M'+pts[0][0]+' '+pts[0][1]):'';
+    var d='M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);
+    for(var i=0;i<pts.length-1;i++){
+      var p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||pts[i+1];
+      var c1x=p1[0]+(p2[0]-p0[0])/6, c1y=p1[1]+(p2[1]-p0[1])/6;
+      var c2x=p2[0]-(p3[0]-p1[0])/6, c2y=p2[1]-(p3[1]-p1[1])/6;
+      d+=' C'+c1x.toFixed(1)+' '+c1y.toFixed(1)+' '+c2x.toFixed(1)+' '+c2y.toFixed(1)+' '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+    }
+    return d;
+  }
+  function progressHTML(){
+    var s=app.sessions.slice().reverse(); var n=s.length;   // in chronological order
+    var W=300,H=92,pad=16, maxX=n-1;
+    var avg=Math.round(s.reduce(function(a,x){return a+x.score;},0)/n*10)/10;
+    var pts=s.map(function(ss,i){ var x=pad+(W-2*pad)*(maxX? i/maxX:0); var y=pad+(H-2*pad)*(1-(ss.score-1)/9); return [x,y]; });
+    var path=smoothPath(pts);
+    var dots=pts.map(function(p){return '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3" style="fill:var(--accent)"/>';}).join('');
+    var label=(app.lang==='zh')?('平均 '+avg+'/10 · 共 '+n+' 次'):('Avg '+avg+'/10 · '+n+' sessions');
+    var title=(app.lang==='zh')?'进步曲线（综合分）':'Progress (overall)';
+    return '<div class="progcard"><div class="ph"><span>'+title+'</span><span>'+label+'</span></div>'+
+      '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+
+      '<line x1="'+pad+'" y1="'+(H-pad)+'" x2="'+(W-pad)+'" y2="'+(H-pad)+'" stroke="#dde1e5" stroke-width="1"/>'+
+      '<path d="'+path+'" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+'</svg></div>';
+  }
+  function renderHistory(){
+    var c=$('historyList'); c.innerHTML='';
+    if(!app.sessions.length){
+      c.innerHTML='<div class="empty"><div class="ei">🕘</div><div>'+tr().emptyHist+'</div></div>';
+      var b=document.createElement('button'); b.className='btn primary'; b.style.marginTop='14px'; b.textContent=tr().teachNow;
+      b.addEventListener('click',function(){go('stage');}); c.appendChild(b); return;
+    }
+    if(app.sessions.length>=2){ c.insertAdjacentHTML('beforeend', progressHTML()); }
+    app.sessions.forEach(function(s,idx){
+      var row=document.createElement('div'); row.className='hrow';
+      row.innerHTML='<div><div class="hl">'+emoji(s.persona)+' '+escapeHtml(s.topic)+'</div><div class="hm">'+tr().persona[s.persona]+' · '+s.date+'</div></div><div class="hbadge">'+s.score+'/10</div>';
+      row.addEventListener('click',function(){ showReport(s); });
+      c.appendChild(row);
+    });
+  }
+  function escapeHtml(s){ return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  /* ---------- Me / Profile ---------- */
+  function renderProfile(){
+    var n=app.user?app.user.name:'Guest';
+    if(app.user && app.user.pic){ $('avatar').innerHTML='<img src="'+app.user.pic+'" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
+    else { $('avatar').innerHTML=''; $('avatar').textContent=n.charAt(0).toUpperCase(); }
+    $('profName').textContent=n;
+    $('profMeta').textContent=(app.stage?tr().stageName[app.stage]:'—')+' · '+app.sessions.length+(app.lang==='zh'?' 次讲课':' sessions');
+    $('stageVal').textContent=(app.stage?tr().stageName[app.stage]:'—')+' ›';
+    $('langVal').textContent=(app.lang==='zh'?'中文':'English')+' ›';
+    $('voiceToggle').classList.toggle('on',app.voiceOn);
+    $('voiceGenderVal').textContent = (app.voiceGender==='male') ? (app.lang==='zh'?'男声 ›':'Male ›') : (app.lang==='zh'?'女声 ›':'Female ›');
+    $('themeToggle').classList.toggle('on', app.theme==='dark');
+    $('micStatus').textContent = SR_SUPPORTED ? (app.lang==='zh'?'可用 ›':'Available ›') : (app.lang==='zh'?'不支持':'Not supported');
+    $('keyVal').textContent = app.proxyUrl ? (app.lang==='zh'?'已连接（共享）':'Connected (shared)')
+      : app.apiKey ? (app.lang==='zh'?'Gemini 已连接 ›':'Gemini connected ›')
+      : (app.lang==='zh'?'演示大脑 · 点此加密钥 ›':'Demo brain · add key ›');
+  }
+  $('rowStage').addEventListener('click',function(){ go('stage'); });
+  $('rowLang').addEventListener('click',function(){ setLang(app.lang==='zh'?'en':'zh'); });
+  $('rowKey').addEventListener('click',function(){
+    var msg = app.lang==='zh' ? '粘贴你的 Gemini API 密钥（留空=清除，使用演示大脑）：' : 'Paste your Gemini API key (blank = clear, use demo brain):';
+    var k=window.prompt(msg, app.apiKey||''); if(k===null) return;
+    app.apiKey=k.trim();
+    try{ if(app.apiKey) localStorage.setItem('feynman_gemini_key',app.apiKey); else localStorage.removeItem('feynman_gemini_key'); }catch(e){}
+    renderProfile();
+  });
+  $('voiceToggle').addEventListener('click',function(){ app.voiceOn=!app.voiceOn; this.classList.toggle('on',app.voiceOn); if(!app.voiceOn) stopSpeak(); });
+  $('rowVoiceGender').addEventListener('click',function(){
+    app.voiceGender = (app.voiceGender==='male') ? 'female' : 'male';
+    try{ localStorage.setItem('feynman_voicegender', app.voiceGender); }catch(e){}
+    renderProfile(); stopSpeak();
+    if(app.voiceOn && (app.proxyUrl||app.apiKey)){          // quick spoken preview of the new voice
+      geminiSpeak(app.lang==='zh'?'嗨，我是你的学生，就用这个声音啦～':'Hi, I\'m your student — this is my voice now.', null);
+    }
+  });
+  function applyTheme(){ document.documentElement.setAttribute('data-theme', app.theme==='dark'?'dark':'light'); }
+  $('rowTheme').addEventListener('click',function(){
+    app.theme = (app.theme==='dark') ? 'light' : 'dark';
+    applyTheme(); this.querySelector('.toggle').classList.toggle('on', app.theme==='dark');
+    try{ localStorage.setItem('feynman_theme', app.theme); }catch(e){}
+  });
+  $('signOut').addEventListener('click',function(){ app.user=null; try{localStorage.removeItem('feynman_user');}catch(e){} go('landing'); });
+
+  /* ---------- Voice: text-to-speech (TTS) ----------
+     Two tricks to keep the voice from sounding stiff: (1) assign each of the three personas a "different real voice";
+     (2) add a little random jitter to each sentence's pitch/rate so it sounds more human. */
+  var voiceList=[];
+  function loadVoices(){ try{ voiceList = window.speechSynthesis.getVoices()||[]; }catch(e){ voiceList=[]; } }
+  if('speechSynthesis' in window){ loadVoices(); window.speechSynthesis.onvoiceschanged=loadVoices; }
+  function pickVoice(persona){
+    if(!voiceList.length) loadVoices();
+    var src;
+    if(app.lang==='zh'){
+      // Use only Mandarin (mainland zh-CN) voices, excluding Cantonese / HK-TW accents
+      var bad=/yue|cantonese|粤|hk|hong ?kong|zh-tw|zh_tw|taiwan|台/i;
+      var man=voiceList.filter(function(v){
+        var lg=(v.lang||'').toLowerCase(), s=lg+' '+(v.name||'');
+        var isMandarin = lg==='zh-cn'||lg==='zh_cn'||lg==='zh'||/mandarin|普通话|中国大陆|simplified/i.test(v.name||'');
+        return isMandarin && !bad.test(s);
+      });
+      if(!man.length){ man=voiceList.filter(function(v){ var s=((v.lang||'')+' '+(v.name||'')).toLowerCase(); return s.indexOf('zh')>=0 && !bad.test(s); }); }
+      if(!man.length) return null;   // no Mandarin voice -> let the browser default handle it (u.lang=zh-CN)
+      var niceZ=man.filter(function(v){ return /google|natural|neural|enhanced|premium|xiaoxiao|huihui|yaoyao/i.test(v.name); });
+      src = niceZ.length?niceZ:man;
+      if(persona==='child'){ var femZ=src.filter(function(v){ return /female|woman|girl|xiaoxiao|huihui|女|晓|婷/i.test(v.name); }); if(femZ.length) return femZ[0]; }
+    } else {
+      var m=voiceList.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf('en')===0; });
+      if(!m.length) return null;
+      var niceE=m.filter(function(v){ return /google|natural|neural|enhanced|premium/i.test(v.name); });
+      src = niceE.length?niceE:m;
+      if(persona==='child'){ var femE=src.filter(function(v){ return /female|woman|girl|samantha|zira|aria/i.test(v.name); }); if(femE.length) return femE[0]; }
+    }
+    var idx = persona==='child' ? 0 : persona==='peer' ? 1 : 2;   // when multiple voices exist, the three personas use different ones
+    return src[idx % src.length];
+  }
+  function jitter(base,amt){ return Math.round((base + (Math.random()*2-1)*amt)*100)/100; }
+  function browserSpeak(text){
+    if(!app.voiceOn || !('speechSynthesis' in window)) return;
+    try{
+      window.speechSynthesis.cancel();
+      var clean=text.replace(/[🔊*]/g,'').trim();
+      var u=new SpeechSynthesisUtterance(clean);
+      var zh = app.lang==='zh';
+      u.lang = zh?'zh-CN':'en-US';
+      var v=pickVoice(app.persona); if(v) u.voice=v;
+      // Chinese uses a gentler pitch range (too high sounds airy); English can be more exaggerated
+      if(app.persona==='child'){ u.pitch=jitter(1.0, 0.02); u.rate=jitter(zh?0.98:1.0, 0.03); }   /* no longer raise the pitch, to avoid a robotic tone; convey the child's voice via a soft female voice */
+      else if(app.persona==='expert'){ u.pitch=jitter(zh?0.93:0.85, 0.07); u.rate=jitter(zh?0.93:0.95, 0.05); }
+      else { u.pitch=jitter(zh?1.0:1.08, zh?0.06:0.15); u.rate=jitter(zh?0.97:1.0, 0.05); }
+      u.volume=1;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  /* Neural TTS via Gemini — far less robotic, with a per-persona speaking style. Browser TTS is the fallback. */
+  var ttsAudio=null;
+  function stopSpeak(){ try{ window.speechSynthesis.cancel(); }catch(e){} if(ttsAudio){ try{ ttsAudio.pause(); }catch(e){} ttsAudio=null; } }
+  function speak(text, el){
+    if(!app.voiceOn){ if(el) el.textContent=text; return; }               // voice off → just show the text
+    stopSpeak();
+    if(app.proxyUrl || app.apiKey){ if(geminiSpeak(text, el)) return; }    // neural voice, revealed in sync with the text
+    if(el) el.textContent=text;                                            // fallback: show text now + browser voice
+    browserSpeak(text);
+  }
+  var TTS_VOICES={ child:{female:'Leda',male:'Puck'}, peer:{female:'Aoede',male:'Fenrir'}, expert:{female:'Kore',male:'Charon'} };   // Gemini prebuilt voices, per persona + gender
+  function ttsVoice(p){ var g=(app.voiceGender==='male')?'male':'female'; return (TTS_VOICES[p]||TTS_VOICES.peer)[g]; }
+  function ttsRate(p){ return p==='child'?1.2:p==='expert'?1.1:1.16; }                // speed up playback to a normal human pace
+  function ttsStyle(p){
+    if(app.lang==='zh') return '用正常语速、自然流畅地，'+(p==='child'?'带天真、好奇、雀跃的语气':p==='expert'?'带沉稳、清晰、有条理的语气':'带轻松、像朋友聊天的语气')+'说：';
+    return 'Say this at a natural, normal conversational pace, '+(p==='child'?'in a curious, cheerful, childlike voice':p==='expert'?'in a calm, measured, precise voice':'casually, like a friendly classmate')+': ';
+  }
+  function b64ToBytes(b64){ var bin=atob(b64), n=bin.length, a=new Uint8Array(n); for(var i=0;i<n;i++) a[i]=bin.charCodeAt(i); return a; }
+  function pcmToWav(pcm, rate){   // wrap raw 16-bit mono PCM in a WAV header so <audio> can play it
+    var ch=1, bps=16, dataLen=pcm.length, buf=new ArrayBuffer(44+dataLen), dv=new DataView(buf);
+    function s(o,str){ for(var i=0;i<str.length;i++) dv.setUint8(o+i,str.charCodeAt(i)); }
+    s(0,'RIFF'); dv.setUint32(4,36+dataLen,true); s(8,'WAVE'); s(12,'fmt '); dv.setUint32(16,16,true);
+    dv.setUint16(20,1,true); dv.setUint16(22,ch,true); dv.setUint32(24,rate,true); dv.setUint32(28,rate*ch*bps/8,true);
+    dv.setUint16(32,ch*bps/8,true); dv.setUint16(34,bps,true); s(36,'data'); dv.setUint32(40,dataLen,true);
+    new Uint8Array(buf,44).set(pcm); return new Blob([buf],{type:'audio/wav'});
+  }
+  function typeInto(el, text, durationMs){          // reveal text progressively, timed to the audio
+    if(!el) return function(){};
+    el.textContent=''; var i=0, n=text.length;
+    var per=Math.max(14, Math.min(160, durationMs/Math.max(1,n)));
+    var t=setInterval(function(){ i+=1; el.textContent=text.slice(0,i); $('chatBox').scrollTop=$('chatBox').scrollHeight; if(i>=n) clearInterval(t); }, per);
+    return function(){ clearInterval(t); el.textContent=text; };
+  }
+  function geminiSpeak(text, el){
+    var clean=text.replace(/[🔊*]/g,'').trim(); if(!clean){ if(el) el.textContent=text; return false; }
+    var body={ contents:[{parts:[{text: ttsStyle(app.persona)+clean}]}],
+      generationConfig:{ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: ttsVoice(app.persona) } } } } };
+    var url = app.proxyUrl
+      ? (app.proxyUrl + (app.proxyUrl.indexOf('?')>=0?'&':'?') + 'model=gemini-2.5-flash-preview-tts')
+      : ('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key='+encodeURIComponent(app.apiKey));
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var parts=((((d.candidates||[])[0]||{}).content)||{}).parts||[], inline=null;
+        for(var i=0;i<parts.length;i++){ if(parts[i].inlineData){ inline=parts[i].inlineData; break; } }
+        if(!inline||!inline.data){ if(el) el.textContent=text; browserSpeak(text); return; }
+        var rate=24000, m=(inline.mimeType||'').match(/rate=(\d+)/); if(m) rate=parseInt(m[1],10);
+        var au=new Audio(URL.createObjectURL(pcmToWav(b64ToBytes(inline.data), rate)));
+        au.playbackRate=ttsRate(app.persona);   // normal human speaking speed, not slow
+        ttsAudio=au;
+        var finish=null, started=false;
+        function startReveal(){ if(started) return; started=true;
+          var dur=(isFinite(au.duration)&&au.duration>0)?(au.duration/au.playbackRate*1000):Math.max(1200, clean.length*95);
+          finish=typeInto(el, text, dur);   // text appears WITH the voice, not before it
+        }
+        au.addEventListener('play', startReveal);
+        au.addEventListener('ended', function(){ if(finish) finish(); else if(el) el.textContent=text; });
+        au.addEventListener('error', function(){ if(el) el.textContent=text; });
+        au.play().then(startReveal).catch(function(){ if(el) el.textContent=text; });   // if autoplay is blocked, still show the text
+      })
+      .catch(function(){ if(el) el.textContent=text; browserSpeak(text); });
+    return true;
+  }
+
+  /* ---------- Voice: speech-to-text (STT) ---------- */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var SR_SUPPORTED = !!SR;
+  var recog=null, recording=false, wantListening=false, baseText='';
+  function startRecog(){
+    recog=new SR(); recog.lang=app.lang==='zh'?'zh-CN':'en-US'; recog.interimResults=true;
+    recog.continuous=true;                                                 // pauses / breaths don't end recognition or auto-send
+    recog.onstart=function(){ recording=true; $('micBtn').classList.add('rec'); $('live').textContent=tr().micListening; };
+    recog.onresult=function(e){
+      if(!recording) return;                                               // ignore late/stale events so they can't wipe the box
+      var interim='', finalTxt='';
+      for(var i=e.resultIndex;i<e.results.length;i++){ var r=e.results[i]; if(r.isFinal){ finalTxt+=r[0].transcript; } else { interim+=r[0].transcript; } }
+      if(finalTxt) baseText+=finalTxt;
+      $('msg').value = baseText + interim;                                 // only APPENDS — never overwrites your typed text
+    };
+    recog.onerror=function(ev){
+      if(ev && (ev.error==='not-allowed'||ev.error==='service-not-allowed')){ wantListening=false; $('live').textContent=tr().micUnsupported; }
+      // no-speech / aborted / network are normal during pauses — ignore; onend keeps us listening
+    };
+    recog.onend=function(){
+      recording=false;
+      if(wantListening){                                                   // a pause ended this leg — keep listening until you tap stop
+        baseText=$('msg').value; if(baseText && !/\s$/.test(baseText)) baseText+=' ';   // commit what's shown so nothing is lost across the restart
+        setTimeout(function(){ if(wantListening) startRecog(); }, 250); return;
+      }
+      $('micBtn').classList.remove('rec'); $('live').textContent=tr().micReady;         // stopped — text stays for you to review, then YOU send it
+    };
+    try{ recog.start(); }catch(e){ /* transient "already started" — ignore */ }
+  }
+  $('micBtn').addEventListener('click',function(){
+    if(!SR_SUPPORTED){ $('live').textContent=tr().micUnsupported; return; }
+    if(wantListening){ wantListening=false; try{recog.stop();}catch(e){} return; }      // tap again to stop; then send it yourself
+    wantListening=true;
+    baseText=$('msg').value; if(baseText && !/\s$/.test(baseText)) baseText+=' ';        // append voice AFTER whatever is already typed
+    startRecog();
+  });
+
+  /* ---------- Startup ---------- */
+  $('langSeg').addEventListener('click',function(e){var b=e.target.closest('button'); if(b) setLang(b.getAttribute('data-l'));});
+  document.body.addEventListener('click',function(e){ var b=e.target.closest('[data-go]'); if(b) go(b.getAttribute('data-go')); });
+  $('onboardBtn').addEventListener('click',function(){ $('onboard').classList.add('hide'); try{ localStorage.setItem('feynman_onboarded','1'); }catch(e){} });
+  loadSessions();
+  loadUser();
+  try{ app.voiceGender=localStorage.getItem('feynman_voicegender')||'female'; }catch(e){}
+  try{ app.theme=localStorage.getItem('feynman_theme')||'light'; }catch(e){} applyTheme();
+  try{ app.apiKey=localStorage.getItem('feynman_gemini_key')||''; }catch(e){}
+  try{ app.proxyUrl = PROXY_URL || localStorage.getItem('feynman_proxy') || ''; }catch(e){ app.proxyUrl = PROXY_URL; }
+  setLang('zh');
+  go('landing');
+  try{ if(!localStorage.getItem('feynman_onboarded')) $('onboard').classList.remove('hide'); }catch(e){}
+})();
+</script>
+</body>
+</html>
