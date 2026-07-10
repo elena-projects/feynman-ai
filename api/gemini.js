@@ -7,13 +7,19 @@
 // ============================================================
 
 export default async function handler(req, res) {
-  // CORS: allow web pages (including cross-origin) to call
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // CORS: only our own app may call this (not an open relay for the key's quota).
+  res.setHeader("Access-Control-Allow-Origin", "https://feynman.elenaprojects.cc");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(200).send("Feynman AI proxy ✅");
+
+  // Anti-abuse: reject calls that aren't referred from our own site.
+  const ref = String(req.headers.referer || req.headers.origin || "");
+  if (!ref.startsWith("https://feynman.elenaprojects.cc")) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
 
   const KEY = process.env.GEMINI_KEY;
   if (!KEY) return res.status(500).json({ error: "Server is missing GEMINI_KEY env var." });
