@@ -12,7 +12,7 @@
   gtag('js', new Date());
   gtag('config', 'G-Y6MPKG013G');
 </script>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2382b8b7'/%3E%3Cpath d='M16 8.5 L27 13 L16 17.5 L5 13 Z' fill='%23fff'/%3E%3Cpath d='M11 14.7 V19 c0 1.5 2.3 2.7 5 2.7 s5 -1.2 5 -2.7 V14.7 L16 17.9 Z' fill='%23fff'/%3E%3Cpath d='M27 13 v5.4' stroke='%23fff' stroke-width='1.1' fill='none'/%3E%3Ccircle cx='27' cy='19.2' r='1.3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
   /* ===== Design variables (colors, border-radius, etc. centralized here for easy global changes) ===== */
@@ -1083,7 +1083,7 @@
   try{ app.theme=localStorage.getItem('feynman_theme')||'light'; }catch(e){} applyTheme();
   try{ app.apiKey=localStorage.getItem('feynman_gemini_key')||''; }catch(e){}
   try{ app.proxyUrl = PROXY_URL || localStorage.getItem('feynman_proxy') || ''; }catch(e){ app.proxyUrl = PROXY_URL; }
-  setLang('zh');
+  setLang((navigator.language||'').toLowerCase().indexOf('zh')===0?'zh':'en');   // default to English abroad, Chinese for zh browsers
   go('landing');
   try{ if(!localStorage.getItem('feynman_onboarded')) $('onboard').classList.remove('hide'); }catch(e){}
 })();
