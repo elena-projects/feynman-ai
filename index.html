@@ -300,11 +300,13 @@
       <div class="chat" id="chatBox"></div>
       <div class="composer">
         <button class="iconbtn" id="micBtn" title="Voice">🎙️</button>
-        <button class="iconbtn" id="undoBtn" title="Undo / 撤回上一句" disabled>↶</button>
         <input type="text" id="msg" data-ph-en="Type your explanation…" data-ph-zh="输入你的讲解……">
         <button class="iconbtn send" id="sendBtn">➤</button>
       </div>
-      <button class="linklike" id="polishBtn" data-en="✨ Help me say it more clearly" data-zh="✨ 帮我说得更清楚">✨ 帮我说得更清楚</button>
+      <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
+        <button class="linklike" id="polishBtn" data-en="✨ Help me say it more clearly" data-zh="✨ 帮我说得更清楚">✨ 帮我说得更清楚</button>
+        <button class="linklike hide" id="undoBtn" data-en="↩ Undo my last message" data-zh="↩ 撤回上一句">↩ 撤回上一句</button>
+      </div>
       <div class="suggest hide" id="suggestBox"></div>
       <div class="live" id="live"></div>
       <div class="row">
@@ -657,7 +659,7 @@
     } else { fallback(); }
   }
   function updateTurn(){ $('turnInfo').textContent = tr().turn(app.cur.turns); updateUndo(); }
-  function updateUndo(){ var b=$('undoBtn'); if(b) b.disabled = !(app.cur && app.cur.userMsgs && app.cur.userMsgs.length); }
+  function updateUndo(){ var b=$('undoBtn'); if(b){ var has=!!(app.cur && app.cur.userMsgs && app.cur.userMsgs.length); b.disabled=!has; b.classList.toggle('hide', !has); } }
   /* Undo the last exchange: drop the AI reply + your last message, and put your words back in the box to edit & resend. */
   function undo(){
     if(!app.cur || !app.cur.userMsgs || !app.cur.userMsgs.length) return;
