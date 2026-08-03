@@ -300,6 +300,7 @@
       <div class="chat" id="chatBox"></div>
       <div class="composer">
         <button class="iconbtn" id="micBtn" title="Voice">🎙️</button>
+        <button class="iconbtn" id="undoBtn" title="Undo / 撤回上一句" disabled>↶</button>
         <input type="text" id="msg" data-ph-en="Type your explanation…" data-ph-zh="输入你的讲解……">
         <button class="iconbtn send" id="sendBtn">➤</button>
       </div>
@@ -655,7 +656,25 @@
       }).catch(function(){ showThinking(false); fallback(); });
     } else { fallback(); }
   }
-  function updateTurn(){ $('turnInfo').textContent = tr().turn(app.cur.turns); }
+  function updateTurn(){ $('turnInfo').textContent = tr().turn(app.cur.turns); updateUndo(); }
+  function updateUndo(){ var b=$('undoBtn'); if(b) b.disabled = !(app.cur && app.cur.userMsgs && app.cur.userMsgs.length); }
+  /* Undo the last exchange: drop the AI reply + your last message, and put your words back in the box to edit & resend. */
+  function undo(){
+    if(!app.cur || !app.cur.userMsgs || !app.cur.userMsgs.length) return;
+    var lastText = app.cur.userMsgs[app.cur.userMsgs.length-1];
+    var h=app.cur.history;
+    while(h.length && h[h.length-1].role==='model') h.pop();          // remove the AI reply/replies
+    if(h.length && h[h.length-1].role==='user' && h[h.length-1].text===lastText) h.pop(); // remove your last message
+    app.cur.userMsgs.pop();
+    if(app.cur.askedKeys && app.cur.askedKeys.length) app.cur.askedKeys.pop();
+    app.cur.turns = Math.max(0, app.cur.turns-1);
+    var box=$('chatBox'); var bubbles=box.querySelectorAll('.bubble'); var lastMe=-1;
+    for(var i=0;i<bubbles.length;i++){ if(bubbles[i].classList.contains('me')) lastMe=i; }
+    if(lastMe>=0){ for(var j=bubbles.length-1;j>=lastMe;j--) bubbles[j].parentNode.removeChild(bubbles[j]); }
+    stopSpeak();
+    $('msg').value = lastText; $('msg').focus();
+    updateTurn();
+  }
 
   function send(){
     var v=$('msg').value.trim(); if(!v) return;
@@ -685,7 +704,9 @@
       + 'Stay deeply anchored to THIS subject ('+subj+') and topic ("'+app.topic+'"): make each question specific to the actual content — for math push the reasoning and steps, for history the causes/evidence/significance, for science the mechanism or a concrete example. If they uploaded study material, tie your questions to what that material actually covers and reference its specific ideas; never stay generic. '
       + 'Keep nudging them toward SIMPLER, plainer language: whenever they get convoluted, jargon-heavy or rambling, gently ask them to say it more simply or with an everyday example — that is the whole point of the Feynman technique. '
       + 'Vary your wording every time and stay coherent. Stay fully in character for your persona and difficulty, warm and curious like a real learner. Do NOT lecture and do NOT give away the answer. Ask EXACTLY ONE question — end with a single question mark. '
-      + 'If you paraphrase their point, keep it factually accurate; if you are playing not-understanding, voice it as honest uncertainty ("嗯…我有点糊涂" / "wait, I\'m not sure I follow"), and NEVER confidently state a wrong version of the concept (that would teach them something false). Keep it to 1–2 short, natural sentences. '+lang;
+      + 'If you paraphrase their point, keep it factually accurate; if you are playing not-understanding, voice it as honest uncertainty ("嗯…我有点糊涂" / "wait, I\'m not sure I follow"), and NEVER confidently state a wrong version of the concept (that would teach them something false). '
+      + 'IMPORTANT: if something they just taught is clearly factually WRONG or a real misconception, do not let it slide — while staying in character, gently surface it as a genuine doubt or question ("等等…我记得好像不是这样？是不是应该是…？" / "wait — I thought it was actually…, did I get that wrong?") so THEY notice and correct it themselves. Point at what specifically seems off, but don\'t lecture or hand them the full answer. '
+      + 'Keep it to 1–2 short, natural sentences. '+lang;
   }
   function geminiContents(){ return app.cur.history.map(function(h){ return {role:h.role, parts: h.parts || [{text:h.text}]}; }); }
   function callGemini(system, contents, gen){
@@ -735,6 +756,7 @@
     if(app.cur.turns>=4){ setTimeout(function(){ aiSay(tr().finishHint); }, 600); }
   }
   $('sendBtn').addEventListener('click',send);
+  $('undoBtn').addEventListener('click',undo);
   $('msg').addEventListener('keydown',function(e){ if(e.key==='Enter') send(); });
   $('restartBtn').addEventListener('click',function(){ go('subject'); });
 
