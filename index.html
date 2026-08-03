@@ -705,7 +705,7 @@
       + 'Keep nudging them toward SIMPLER, plainer language: whenever they get convoluted, jargon-heavy or rambling, gently ask them to say it more simply or with an everyday example — that is the whole point of the Feynman technique. '
       + 'Vary your wording every time and stay coherent. Stay fully in character for your persona and difficulty, warm and curious like a real learner. Do NOT lecture and do NOT give away the answer. Ask EXACTLY ONE question — end with a single question mark. '
       + 'If you paraphrase their point, keep it factually accurate; if you are playing not-understanding, voice it as honest uncertainty ("嗯…我有点糊涂" / "wait, I\'m not sure I follow"), and NEVER confidently state a wrong version of the concept (that would teach them something false). '
-      + 'IMPORTANT: if something they just taught is clearly factually WRONG or a real misconception, do not let it slide — while staying in character, gently surface it as a genuine doubt or question ("等等…我记得好像不是这样？是不是应该是…？" / "wait — I thought it was actually…, did I get that wrong?") so THEY notice and correct it themselves. Point at what specifically seems off, but don\'t lecture or hand them the full answer. '
+      + 'FACT-CHECK (this is a priority every turn): first judge whether what they just taught is actually CORRECT. If it is clearly WRONG, a mixed-up concept, or a common misconception, do NOT move on and do NOT pretend to accept it. Clearly but kindly signal that something seems off, NAME the specific thing that is wrong, and nudge toward the right idea as a doubt — not a neutral follow-up. Stay in character: as the child, half-remember it differently ("wait… I thought inertia was the one where things keep still or keep moving — isn\'t that a different rule? 🤔" / "等等…惯性好像是『东西会一直动或一直停』那个，那是不是另一条呀？"); as the classmate/expert, question it directly ("hmm, isn\'t inertia Newton\'s FIRST law? the 2nd is more about force and acceleration?"). Point at the error, but don\'t just hand them the full correct answer. '
       + 'Keep it to 1–2 short, natural sentences. '+lang;
   }
   function geminiContents(){ return app.cur.history.map(function(h){ return {role:h.role, parts: h.parts || [{text:h.text}]}; }); }
@@ -996,7 +996,8 @@
   }
   /* Neural TTS via Gemini — far less robotic, with a per-persona speaking style. Browser TTS is the fallback. */
   var ttsAudio=null;
-  function stopSpeak(){ try{ window.speechSynthesis.cancel(); }catch(e){} if(ttsAudio){ try{ ttsAudio.pause(); }catch(e){} ttsAudio=null; } }
+  var speakToken=0;   // bumped on every stopSpeak so a superseded/undone reply's in-flight audio never plays over the current one
+  function stopSpeak(){ speakToken++; try{ window.speechSynthesis.cancel(); }catch(e){} if(ttsAudio){ try{ ttsAudio.pause(); }catch(e){} ttsAudio=null; } }
   function speak(text, el){
     if(!app.voiceOn){ if(el) el.textContent=text; return; }               // voice off → just show the text
     stopSpeak();
@@ -1028,6 +1029,7 @@
     return function(){ clearInterval(t); el.textContent=text; };
   }
   function geminiSpeak(text, el){
+    var tok=speakToken;   // captured now; if a newer speak/undo bumps it, this stale audio won't play
     var clean=text.replace(/[🔊*]/g,'').trim(); if(!clean){ if(el) el.textContent=text; return false; }
     var body={ contents:[{parts:[{text: ttsStyle(app.persona)+clean}]}],
       generationConfig:{ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: ttsVoice(app.persona) } } } } };
@@ -1037,6 +1039,7 @@
     fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){ return r.json(); })
       .then(function(d){
+        if(tok!==speakToken){ if(el && el.isConnected) el.textContent=text; return; }   // superseded/undone → show text, don't play stale audio
         var parts=((((d.candidates||[])[0]||{}).content)||{}).parts||[], inline=null;
         for(var i=0;i<parts.length;i++){ if(parts[i].inlineData){ inline=parts[i].inlineData; break; } }
         if(!inline||!inline.data){ if(el) el.textContent=text; browserSpeak(text); return; }
