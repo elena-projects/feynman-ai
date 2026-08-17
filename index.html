@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feynman AI</title>
+<meta name="description" content="Teach a topic out loud to an AI that plays your student, asks Socratic questions that expose your gaps, and scores your fluency and mastery. Free, no sign-up." />
+<link rel="canonical" href="https://feynman.elenaprojects.cc/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Elena · Projects" />
+<meta property="og:url" content="https://feynman.elenaprojects.cc/" />
+<meta property="og:title" content="Feynman AI — Learn anything by teaching it to an AI" />
+<meta property="og:description" content="Teach a topic out loud to an AI that plays your student, asks Socratic questions that expose your gaps, and scores your fluency and mastery. Free, no sign-up." />
+<meta property="og:image" content="https://elenaprojects.cc/og-feynman.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Feynman AI — Learn anything by teaching it to an AI" />
+<meta name="twitter:description" content="Teach a topic out loud to an AI that plays your student, asks Socratic questions that expose your gaps, and scores your fluency and mastery. Free, no sign-up." />
+<meta name="twitter:image" content="https://elenaprojects.cc/og-feynman.png" />
+
 <!-- Google Analytics (GA4) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y6MPKG013G"></script>
 <script>
@@ -247,7 +262,7 @@
 <div class="app" id="app">
   <div class="main">
   <div class="header">
-    <div class="brand">Feynman AI <span class="demobadge" data-en="demo brain" data-zh="演示大脑">demo brain</span></div>
+    <div class="brand">Feynman AI <span class="demobadge" id="demoBadge" data-en="demo brain" data-zh="演示大脑">demo brain</span></div>
     <div class="seg" id="langSeg"><button class="on" data-l="en">EN</button><button data-l="zh">中文</button></div>
   </div>
   <div class="dots hide" id="dots"><i id="d0"></i><i id="d1"></i><i id="d2"></i><i id="d3"></i><i id="d4"></i></div>
@@ -755,6 +770,9 @@
   /* —— Real model: Gemini —— */
   var GEMINI_MODEL='gemini-2.5-flash';
   var PROXY_URL='/api/gemini';   // ← After deploying the "proxy", paste its URL here (e.g. https://xxx.workers.dev). Once filled, nobody needs their own key.
+  // The header badge must reflect reality: only warn about the demo brain when
+  // there is genuinely no proxy and no key behind the app.
+  function refreshDemoBadge(){ var b=$('demoBadge'); if(b) b.style.display = aiReady() ? 'none' : ''; }
   function aiReady(){ return !!(app.proxyUrl || app.apiKey); }   // having a proxy OR a personal key both count as "connected"
   function personaBrief(){
     var p=app.persona;
@@ -993,6 +1011,7 @@
     var k=window.prompt(msg, app.apiKey||''); if(k===null) return;
     app.apiKey=k.trim();
     try{ if(app.apiKey) localStorage.setItem('feynman_gemini_key',app.apiKey); else localStorage.removeItem('feynman_gemini_key'); }catch(e){}
+    refreshDemoBadge();
     renderProfile();
   });
   $('voiceToggle').addEventListener('click',function(){ app.voiceOn=!app.voiceOn; this.classList.toggle('on',app.voiceOn); if(!app.voiceOn) stopSpeak(); });
@@ -1229,6 +1248,7 @@
   try{ app.theme=localStorage.getItem('feynman_theme')||'light'; }catch(e){} applyTheme();
   try{ app.apiKey=localStorage.getItem('feynman_gemini_key')||''; }catch(e){}
   try{ app.proxyUrl = PROXY_URL || localStorage.getItem('feynman_proxy') || ''; }catch(e){ app.proxyUrl = PROXY_URL; }
+  refreshDemoBadge();
   setLang((navigator.language||'').toLowerCase().indexOf('zh')===0?'zh':'en');   // default to English abroad, Chinese for zh browsers
   go('landing');
   try{ if(!localStorage.getItem('feynman_onboarded')) $('onboard').classList.remove('hide'); }catch(e){}
