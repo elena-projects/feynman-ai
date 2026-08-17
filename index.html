@@ -98,7 +98,8 @@
   .btn.ghost:hover{color:var(--accent); border-color:var(--accent); background:var(--accentsoft);}
   .btn:disabled{opacity:.45; cursor:not-allowed;}
   .row{display:flex; gap:10px; margin-top:18px;} .row .btn{flex:1;}
-  input[type=text],input[type=email]{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 15px; font-size:15px; font-family:inherit;}
+  /* background/color must follow the theme, otherwise dark mode leaves white boxes with black text */
+  input[type=text],input[type=email]{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 15px; font-size:15px; font-family:inherit; background:var(--panel); color:var(--ink);}
   input:focus{outline:none; border-color:var(--accent);}
   label{font-size:13px; font-weight:600; display:block; margin:14px 0 7px;}
 
@@ -217,6 +218,29 @@
   .tabbar.hide{display:none;}
   .tab{flex:1; text-align:center; padding:9px 0 12px; font-size:11px; color:var(--muted); cursor:pointer;}
   .tab .tic{font-size:20px; display:block; margin-bottom:2px;} .tab.on{color:var(--accent); font-weight:700;}
+
+  /* ===== Feedback widget (always reachable, sits above the bottom tab bar on phones) ===== */
+  .fbw-launch{position:fixed; right:16px; bottom:92px; z-index:40; display:flex; align-items:center; gap:7px;
+    background:var(--panel); color:var(--accent-dark); border:1.5px solid var(--line); border-radius:999px;
+    padding:11px 16px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer;
+    box-shadow:0 4px 14px rgba(30,60,58,.16); transition:border-color .15s, transform .15s;}
+  .fbw-launch:hover{border-color:var(--accent); transform:translateY(-2px);}
+  @media(min-width:900px){ .fbw-launch{bottom:20px;} }  /* nav moves to the left rail, bottom is free */
+  .fbw-why{font-size:13.5px; color:var(--muted); line-height:1.6; margin:6px 0 16px;}
+  .fbw-x{position:absolute; top:10px; right:12px; background:none; border:0; font-size:18px; line-height:1;
+    color:var(--faint); cursor:pointer; font-family:inherit; padding:4px 6px;}
+  .fbw-x:hover{color:var(--ink);}
+  .fbw-card{position:relative;}
+  .fbw-card textarea{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px;
+    font-size:14.5px; font-family:inherit; color:var(--ink); background:var(--panel); resize:vertical; line-height:1.55;}
+  .fbw-card textarea:focus{outline:none; border-color:var(--accent);}
+  .fbw-card input[type=text]{margin-top:9px;}
+  .fbw-anon{font-size:12px; color:var(--faint); text-align:center; margin:10px 0 0;}
+  .fbw-msg{font-size:13px; color:var(--warn); text-align:center; margin:8px 0 0;}
+  .fbw-thanks{text-align:center; padding:24px 0;}
+  .fbw-thanks .fbw-tt{font-size:17px; font-weight:700; color:var(--ink); margin:10px 0 4px;}
+  .fbw-thanks .fbw-ts{font-size:13px; color:var(--muted); margin:0;}
+  .fbw-thanks.hide, .fbw-form.hide{display:none;}
 </style>
 </head>
 <body>
@@ -374,6 +398,48 @@
     <div class="ovlstep"><div class="num">2</div><div class="st" data-en="Explain it out loud (or type). The AI plays that student and asks questions that find your gaps." data-zh="开口讲（或打字）。AI 扮演那个学生，提问戳出你的漏洞。">Explain; the AI probes your gaps.</div></div>
     <div class="ovlstep"><div class="num">3</div><div class="st" data-en="Get a mastery score and exactly what to review next. Every session is saved." data-zh="拿到掌握度评分和下次该补的地方。每次讲课都会保存。">Get a score and what to review.</div></div>
     <button class="btn primary" id="onboardBtn" style="margin-top:10px;" data-en="Got it — let's go" data-zh="知道了，开始吧">Got it — let's go</button>
+  </div>
+</div>
+
+<!-- ===== Feedback widget: outside #app so screen switching never hides it ===== -->
+<button class="fbw-launch" id="fbwOpen" aria-label="Feedback">
+  <span aria-hidden="true">💬</span><span data-en="Feedback" data-zh="想法">Feedback</span>
+</button>
+
+<div class="ovl hide" id="fbwPanel">
+  <div class="ovlcard fbw-card">
+    <button class="fbw-x" id="fbwClose" aria-label="Close">&times;</button>
+
+    <div id="fbwForm">
+      <h3 data-en="Tell me what you think" data-zh="说说你的想法">Tell me what you think</h3>
+      <!-- the ask: why their words actually matter -->
+      <p class="fbw-why"
+         data-en="I'm a student, and I built this on my own — it's still changing. If something felt confusing, broke, or you wish it did something else, tell me. I read every message, and I really do change things because of them."
+         data-zh="这个小工具是我一个人做的，还在一直改。哪里不好用、哪里卡住了、想要什么功能——你的一句话我都会认真看，而且真的会照着改。">I'm a student, and I built this on my own — it's still changing. If something felt confusing, broke, or you wish it did something else, tell me. I read every message, and I really do change things because of them.</p>
+
+      <textarea id="fbwText" rows="4" maxlength="600"
+        data-ph-en="What worked, what didn't, what you wish it did…"
+        data-ph-zh="好用的地方、难用的地方、卡住的地方、想要的功能…"
+        placeholder="What worked, what didn't, what you wish it did…"></textarea>
+
+      <input type="text" id="fbwName" maxlength="40"
+        data-ph-en="Name or nickname (optional)"
+        data-ph-zh="名字 / 昵称（可留空）"
+        placeholder="Name or nickname (optional)">
+
+      <div class="row">
+        <button class="btn primary" id="fbwSend"><span data-en="Send" data-zh="发送">Send</span></button>
+      </div>
+
+      <p class="fbw-anon" data-en="Anonymous is fine" data-zh="匿名也可以">Anonymous is fine</p>
+      <p class="fbw-msg" id="fbwMsg"></p>
+    </div>
+
+    <div class="fbw-thanks hide" id="fbwThanks">
+      <div style="font-size:30px">💛</div>
+      <p class="fbw-tt" data-en="Thank you" data-zh="谢谢你的反馈">Thank you</p>
+      <p class="fbw-ts" data-en="I read every one." data-zh="我会认真看的。">I read every one.</p>
+    </div>
   </div>
 </div>
 
@@ -1098,6 +1164,59 @@
     wantListening=true;
     baseText=$('msg').value; if(baseText && !/\s$/.test(baseText)) baseText+=' ';        // append voice AFTER whatever is already typed
     startRecog();
+  });
+
+  /* ---------- Feedback widget ----------
+     Posts to the shared endpoint on the portfolio origin (this subdomain is CORS-allowlisted).
+     Notes land in a private inbox — never shown publicly. */
+  var FBW_ENDPOINT='https://elenaprojects.cc/api/feedback';
+  function fbwOpen(){
+    $('fbwPanel').classList.remove('hide');
+    $('fbwOpen').style.display='none';
+    setTimeout(function(){ $('fbwText').focus(); },60);
+  }
+  function fbwClose(){
+    $('fbwPanel').classList.add('hide');
+    $('fbwOpen').style.display='';
+    $('fbwMsg').textContent='';
+    // If they just sent something, reset the form for next time.
+    if(!$('fbwThanks').classList.contains('hide')){
+      $('fbwThanks').classList.add('hide');
+      $('fbwForm').classList.remove('hide');
+      $('fbwText').value=''; $('fbwName').value='';
+    }
+  }
+  function fbwSend(){
+    var zh = app.lang==='zh';
+    var text=$('fbwText').value.trim(), msg=$('fbwMsg'), btn=$('fbwSend');
+    if(text.length<2){ msg.textContent = zh?'写一点点再发哦~':'A few more words first :)'; return; }
+    msg.textContent=''; btn.disabled=true;
+    fetch(FBW_ENDPOINT,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text, name:$('fbwName').value.trim(), tool:'feynman'})
+    }).then(function(r){
+      if(r.ok){
+        try{ if(window.gtag) gtag('event','feedback_sent',{app:'feynman'}); }catch(e){}
+        $('fbwForm').classList.add('hide');
+        $('fbwThanks').classList.remove('hide');
+        setTimeout(fbwClose,2400);
+        return;
+      }
+      return r.json().catch(function(){return {};}).then(function(d){
+        msg.textContent = d.error==='blocked'
+          ? (zh?'看起来像广告 / 联系方式，没发出去 🙈 换个说法说说想法?':"That looked like a link or contact info, so it wasn't sent. Try rewording?")
+          : (zh?'发送失败了，稍后再试一次。':'Could not send — please try again.');
+      });
+    }).catch(function(){
+      msg.textContent = zh?'网络不太好，稍后再试~':'Network hiccup — try again in a bit.';
+    }).then(function(){ btn.disabled=false; });
+  }
+  $('fbwOpen').addEventListener('click', fbwOpen);
+  $('fbwClose').addEventListener('click', fbwClose);
+  $('fbwSend').addEventListener('click', fbwSend);
+  $('fbwPanel').addEventListener('click', function(e){ if(e.target===$('fbwPanel')) fbwClose(); });   // click the backdrop
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape' && !$('fbwPanel').classList.contains('hide')) fbwClose();
   });
 
   /* ---------- Startup ---------- */
