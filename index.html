@@ -90,6 +90,15 @@
   .header{display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--line);}
   .brand{font-size:17px; font-weight:900; color:var(--ink); letter-spacing:-.2px;}
   .seg{display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--panel);}
+  .hdr-right{display:flex; align-items:center; gap:8px;}
+  .themebtn{display:inline-flex; align-items:center; justify-content:center; width:30px; height:26px;
+    border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--muted);
+    cursor:pointer; font-family:inherit; padding:0; transition:color .12s, border-color .12s;}
+  .themebtn:hover{color:var(--accent); border-color:var(--accent);}
+  .themebtn svg{width:14px; height:14px; fill:currentColor;}
+  .themebtn .ic-sun{display:none;}
+  html[data-theme="dark"] .themebtn .ic-sun{display:block;}
+  html[data-theme="dark"] .themebtn .ic-moon{display:none;}
   .seg button{border:0; background:transparent; padding:5px 12px; font-size:12px; cursor:pointer; color:var(--muted); font-family:inherit;}
   .seg button.on{background:var(--accent); color:#fff; font-weight:600;}
 
@@ -263,7 +272,13 @@
   <div class="main">
   <div class="header">
     <div class="brand">Feynman AI <span class="demobadge" id="demoBadge" data-en="demo brain" data-zh="演示大脑">demo brain</span></div>
-    <div class="seg" id="langSeg"><button class="on" data-l="en">EN</button><button data-l="zh">中文</button></div>
+    <div class="hdr-right">
+      <button class="themebtn" id="themeBtn" data-al-en="Switch between light and dark" data-al-zh="切换浅色/深色" aria-label="Switch between light and dark">
+        <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 3a7 7 0 0 0 8.5 8.5A8.5 8.5 0 1 1 12.5 3z"/></svg>
+        <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M19.4 4.6l-2.1 2.1M6.7 17.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+      </button>
+      <div class="seg" id="langSeg"><button class="on" data-l="en">EN</button><button data-l="zh">中文</button></div>
+    </div>
   </div>
   <div class="dots hide" id="dots"><i id="d0"></i><i id="d1"></i><i id="d2"></i><i id="d3"></i><i id="d4"></i></div>
 
@@ -1024,12 +1039,18 @@
       geminiSpeak(app.lang==='zh'?'嗨，我是你的学生，就用这个声音啦～':'Hi, I\'m your student — this is my voice now.', null);
     }
   });
-  function applyTheme(){ document.documentElement.setAttribute('data-theme', app.theme==='dark'?'dark':'light'); }
-  $('rowTheme').addEventListener('click',function(){
+  function applyTheme(){
+    document.documentElement.setAttribute('data-theme', app.theme==='dark'?'dark':'light');
+    var t=$('themeToggle'); if(t) t.classList.toggle('on', app.theme==='dark');   // keep the settings row in step
+  }
+  function toggleTheme(){
     app.theme = (app.theme==='dark') ? 'light' : 'dark';
-    applyTheme(); this.querySelector('.toggle').classList.toggle('on', app.theme==='dark');
+    applyTheme();
+    // Once they've chosen, remember it — the system preference only decides the first visit.
     try{ localStorage.setItem('feynman_theme', app.theme); }catch(e){}
-  });
+  }
+  $('rowTheme').addEventListener('click', toggleTheme);
+  $('themeBtn').addEventListener('click', toggleTheme);
   $('signOut').addEventListener('click',function(){ app.user=null; try{localStorage.removeItem('feynman_user');}catch(e){} go('landing'); });
 
   /* ---------- Voice: text-to-speech (TTS) ----------
@@ -1246,7 +1267,12 @@
   loadSessions();
   loadUser();
   try{ app.voiceGender=localStorage.getItem('feynman_voicegender')||'female'; }catch(e){}
-  try{ app.theme=localStorage.getItem('feynman_theme')||'light'; }catch(e){} applyTheme();
+  // No stored choice yet? Follow whatever the device is already set to.
+  try{
+    var storedTheme=localStorage.getItem('feynman_theme');
+    app.theme = storedTheme || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  }catch(e){ app.theme='light'; }
+  applyTheme();
   try{ app.apiKey=localStorage.getItem('feynman_gemini_key')||''; }catch(e){}
   try{ app.proxyUrl = PROXY_URL || localStorage.getItem('feynman_proxy') || ''; }catch(e){ app.proxyUrl = PROXY_URL; }
   refreshDemoBadge();
