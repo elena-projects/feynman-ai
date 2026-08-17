@@ -287,9 +287,9 @@
       <div class="ctr" style="font-size:34px; margin:8px 0;">👋</div>
       <h2 class="ctr" data-en="What should we call you?" data-zh="你叫什么名字？">What should we call you?</h2>
       <div class="hint ctr" data-en="Just to personalize your learning — saved only on this device, no account needed." data-zh="只用来个性化你的学习记录，仅保存在这台设备上，无需注册账号。">Saved on this device.</div>
-      <label data-en="Your name" data-zh="你的名字">Your name</label>
+      <label for="dispName" data-en="Your name" data-zh="你的名字">Your name</label>
       <input type="text" id="dispName" data-ph-en="e.g. Elena" data-ph-zh="例如：Elena">
-      <label data-en="Email (optional)" data-zh="邮箱（可选）">Email (optional)</label>
+      <label for="email" data-en="Email (optional)" data-zh="邮箱（可选）">Email (optional)</label>
       <input type="email" id="email" data-ph-en="name@example.com" data-ph-zh="name@example.com">
       <div class="row"><button class="btn primary" id="enterBtn" data-en="Start learning →" data-zh="开始学习 →">Start learning →</button></div>
     </div>
@@ -309,10 +309,10 @@
       <h2 data-en="What will you teach?" data-zh="今天讲什么？">What will you teach?</h2>
       <div class="hint" id="subjectHint" data-en="Pick a subject (this list comes from your school stage)." data-zh="选一个科目（列表由你的学段决定）。">Pick a subject.</div>
       <div class="grid" id="subjectGrid"></div>
-      <label data-en="Specific topic (optional)" data-zh="具体知识点（可留空）">Specific topic (optional)</label>
+      <label for="topicInput" data-en="Specific topic (optional)" data-zh="具体知识点（可留空）">Specific topic (optional)</label>
       <input type="text" id="topicInput" data-ph-en="e.g. Photosynthesis, Newton's 2nd law…" data-ph-zh="例如：光合作用、牛顿第二定律……">
       <label data-en="Study material (optional)" data-zh="学习资料（可选）">Study material (optional)</label>
-      <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.md,.rtf,.csv,.html,.json,image/*" style="display:none">
+      <input type="file" id="fileInput" data-al-en="Upload notes or a textbook page" data-al-zh="上传笔记或课本照片" aria-label="Upload notes or a textbook page" accept=".pdf,.docx,.doc,.txt,.md,.rtf,.csv,.html,.json,image/*" style="display:none">
       <div class="filerow">
         <button class="filebtn" id="fileBtn" data-en="📎 Upload a file" data-zh="📎 上传文件">📎 上传文件</button>
         <span class="filename" id="fileName"></span>
@@ -339,7 +339,7 @@
       <div class="chat" id="chatBox"></div>
       <div class="composer">
         <button class="iconbtn" id="micBtn" title="Voice">🎙️</button>
-        <input type="text" id="msg" data-ph-en="Type your explanation…" data-ph-zh="输入你的讲解……">
+        <input type="text" id="msg" data-al-en="Your explanation" data-al-zh="你的讲解" aria-label="Your explanation" data-ph-en="Type your explanation…" data-ph-zh="输入你的讲解……">
         <button class="iconbtn send" id="sendBtn">➤</button>
       </div>
       <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
@@ -432,12 +432,12 @@
          data-en="I'm a student, and I built this on my own — it's still changing. If something felt confusing, broke, or you wish it did something else, tell me. I read every message, and I really do change things because of them."
          data-zh="这个小工具是我一个人做的，还在一直改。哪里不好用、哪里卡住了、想要什么功能——你的一句话我都会认真看，而且真的会照着改。">I'm a student, and I built this on my own — it's still changing. If something felt confusing, broke, or you wish it did something else, tell me. I read every message, and I really do change things because of them.</p>
 
-      <textarea id="fbwText" rows="4" maxlength="600"
+      <textarea id="fbwText" rows="4" maxlength="600" data-al-en="Your feedback" data-al-zh="你的反馈" aria-label="Your feedback"
         data-ph-en="What worked, what didn't, what you wish it did…"
         data-ph-zh="好用的地方、难用的地方、卡住的地方、想要的功能…"
         placeholder="What worked, what didn't, what you wish it did…"></textarea>
 
-      <input type="text" id="fbwName" maxlength="40"
+      <input type="text" id="fbwName" maxlength="40" data-al-en="Your name (optional)" data-al-zh="你的名字（可留空）" aria-label="Your name (optional)"
         data-ph-en="Name or nickname (optional)"
         data-ph-zh="名字 / 昵称（可留空）"
         placeholder="Name or nickname (optional)">
@@ -574,6 +574,7 @@
     app.lang=l;
     document.querySelectorAll('[data-en]').forEach(function(e){var v=e.getAttribute('data-'+l); if(v!==null) e.textContent=v;});
     document.querySelectorAll('[data-ph-en]').forEach(function(e){e.setAttribute('placeholder', e.getAttribute('data-ph-'+l)||'');});
+    document.querySelectorAll('[data-al-en]').forEach(function(e){e.setAttribute('aria-label', e.getAttribute('data-al-'+l)||'');});
     document.querySelectorAll('#langSeg button').forEach(function(b){b.classList.toggle('on', b.getAttribute('data-l')===l);});
     $('langVal').textContent = (l==='zh'?'中文':'English')+' ›';
     if($('sc-subject').classList.contains('active')) renderSubjects();
