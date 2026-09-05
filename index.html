@@ -203,6 +203,11 @@
   .submetrics .smk{font-size:12px; color:var(--muted); font-weight:700;} .submetrics .smv{font-size:18px; font-weight:900; color:var(--accent);}
   .fcard{border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; margin-bottom:11px; box-shadow:var(--shadow);}
   .fcard .h{font-size:13.5px; font-weight:800; color:var(--ink); margin-bottom:8px;}
+  /* Getting something wrong matters more than not covering it, so this card is set apart
+     rather than blending into the list. Hidden entirely when nothing was actually wrong. */
+  .fcard.wrong{border-color:var(--warn); background:var(--panel);}
+  .fcard.wrong .h{color:var(--warn);}
+  .fcard.hide{display:none;}
   .fcard .li{font-size:13px; color:#444; margin:6px 0; padding-left:17px; position:relative; line-height:1.45;}
   .fcard .li::before{content:"\203A"; position:absolute; left:2px; color:var(--accent);}
 
@@ -377,7 +382,8 @@
       <div class="submetrics" id="subMetrics" style="display:none"></div>
       <div class="fgrid">
       <div class="fcard"><div class="h" data-en="✅ What you did well" data-zh="✅ 你做得好的">✅ What you did well</div><div id="fGood"></div></div>
-      <div class="fcard"><div class="h" data-en="⚠️ Gaps to close" data-zh="⚠️ 需要补的漏洞">⚠️ Gaps to close</div><div id="fGap"></div></div>
+      <div class="fcard wrong hide" id="fWrongCard"><div class="h" data-en="❗ Where you got it wrong" data-zh="❗ 讲错的地方">❗ Where you got it wrong</div><div id="fWrong"></div></div>
+      <div class="fcard"><div class="h" data-en="⚠️ What you didn’t cover" data-zh="⚠️ 没讲到的地方">⚠️ What you didn’t cover</div><div id="fGap"></div></div>
       <div class="fcard"><div class="h" data-en="🎯 Review next" data-zh="🎯 下次重点复习">🎯 Review next</div><div id="fNext"></div></div>
       </div>
       <div class="row">
@@ -905,7 +911,7 @@
     var stage=app.stage==='middle'?'middle-school':'high-school';
     var subj = app.subject ? app.subject[app.lang] : app.topic;
     var lang=app.lang==='zh'?'Write every feedback string in Simplified Chinese.':'Write every feedback string in English.';
-    var sys='You are an expert tutor evaluating how well a '+stage+' student taught the topic "'+app.topic+'" (subject: '+subj+') using the Feynman technique. Judge ONLY from the transcript, specific to '+subj+', and reference what they actually said. Grade TWO dimensions, each an integer 1-10: "fluency" = how clear, simple and well-organised their LANGUAGE was (reward plain, easy-to-follow explanations and everyday examples; penalise convoluted or jargon-heavy wording), and "mastery" = how well they truly understand the '+subj+' content (correctness, depth, coverage). Then give an overall "score" 1-10. Return STRICT JSON only (no markdown): {"score":<int 1-10>,"fluency":<int 1-10>,"mastery":<int 1-10>,"good":[<2-3 short strings>],"gap":[<2-3 short strings>],"next":[<2-3 short strings>]}. "good"=what they did well; "gap"=misconceptions or missing pieces; "next"=concrete things to review next. '+lang;
+    var sys='You are an expert tutor evaluating how well a '+stage+' student taught the topic "'+app.topic+'" (subject: '+subj+') using the Feynman technique. Judge ONLY from the transcript, specific to '+subj+', and reference what they actually said. Grade TWO dimensions, each an integer 1-10: "fluency" = how clear, simple and well-organised their LANGUAGE was (reward plain, easy-to-follow explanations and everyday examples; penalise convoluted or jargon-heavy wording), and "mastery" = how well they truly understand the '+subj+' content (correctness, depth, coverage). Then give an overall "score" 1-10. Return STRICT JSON only (no markdown): {"score":<int 1-10>,"fluency":<int 1-10>,"mastery":<int 1-10>,"good":[<2-3 short strings>],"wrong":[<0-3 short strings>],"gap":[<2-3 short strings>],"next":[<2-3 short strings>]}. "good"=what they did well. "wrong"=things they actually stated that are INCORRECT — each one names the specific claim they made and then the correction, in one short sentence. Believing something false is worse than leaving it out, so keep this strictly for real errors: if everything they said was accurate, return an EMPTY array rather than padding it. "gap"=important pieces they simply never covered (not errors). "next"=concrete things to review next. '+lang;
     var transcript=app.cur.history.map(function(h){ return (h.role==='user'?'STUDENT: ':'AI: ')+h.text; }).join('\n');
     callGemini(sys, [{role:'user',parts:[{text:transcript}]}], {temperature:0.4, maxOutputTokens:1024, responseMimeType:'application/json'})
       .then(function(txt){
@@ -914,7 +920,7 @@
         var sc=isNaN(parseInt(obj.score,10)) ? Math.round((fl+ma)/2) : clampScore(obj.score,Math.round((fl+ma)/2));
         var session={ topic:app.topic, persona:app.persona, score:sc, fluency:fl, mastery:ma, turns:app.cur.turns,
           date:new Date().toLocaleDateString(),
-          good:(obj.good||[]).slice(0,4), gap:(obj.gap||[]).slice(0,4), next:(obj.next||[]).slice(0,4) };
+          good:(obj.good||[]).slice(0,4), wrong:(obj.wrong||[]).slice(0,3), gap:(obj.gap||[]).slice(0,4), next:(obj.next||[]).slice(0,4) };
         app.sessions.unshift(session); saveSessions(); showReport(session);
       })
       .catch(function(e){ buildReportDemo(); });
@@ -952,6 +958,10 @@
       sm.style.display='flex';
     } else { sm.innerHTML=''; sm.style.display='none'; }
     list('fGood',s.good); list('fGap',s.gap); list('fNext',s.next);
+    // Only surface the corrections card when there is something to correct.
+    var wrong = s.wrong || [];
+    list('fWrong', wrong);
+    $('fWrongCard').classList.toggle('hide', wrong.length === 0);
     go('report');
   }
   function list(id,items){ var c=$(id); c.innerHTML=''; items.forEach(function(it){var d=document.createElement('div'); d.className='li'; d.textContent=it; c.appendChild(d);}); }
