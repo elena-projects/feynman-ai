@@ -646,7 +646,11 @@
   $('fileInput').addEventListener('change',function(){ setFile(this.files && this.files[0]); });
   $('fileClear').addEventListener('click',function(){ setFile(null); $('fileInput').value=''; });
   function setFile(f){
-    if(f && f.size > 12*1024*1024){ $('fileName').textContent = app.lang==='zh'?'文件太大（请小于 12MB）':'File too large (<12MB)'; app.uploadFile=null; $('fileClear').classList.remove('hide'); return; }
+    // The proxy runs as a Vercel function, which rejects a request body over 4.5MB
+    // outright — and base64 adds about a third on the way. Anything past ~3MB of
+    // original file never reaches the model, so promising 12MB only produced a
+    // failure after the upload.
+    if(f && f.size > 3*1024*1024){ $('fileName').textContent = app.lang==='zh'?'文件太大（请小于 3MB，或直接把文字打进来）':'File too large (under 3MB, or type the text in)'; app.uploadFile=null; $('fileClear').classList.remove('hide'); return; }
     app.uploadFile = f || null;
     $('fileName').textContent = f ? f.name : '';
     $('fileClear').classList.toggle('hide', !f);
