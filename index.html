@@ -646,11 +646,13 @@
   $('fileInput').addEventListener('change',function(){ setFile(this.files && this.files[0]); });
   $('fileClear').addEventListener('click',function(){ setFile(null); $('fileInput').value=''; });
   function setFile(f){
-    // The proxy runs as a Vercel function, which rejects a request body over 4.5MB
-    // outright — and base64 adds about a third on the way. Anything past ~3MB of
-    // original file never reaches the model, so promising 12MB only produced a
-    // failure after the upload.
-    if(f && f.size > 3*1024*1024){ $('fileName').textContent = app.lang==='zh'?'文件太大（请小于 3MB，或直接把文字打进来）':'File too large (under 3MB, or type the text in)'; app.uploadFile=null; $('fileClear').classList.remove('hide'); return; }
+    // Uploads reach Gemini as base64 inside the request body, so whatever the proxy
+    // accepts as a body IS the upload limit. The old Vercel function capped a body at
+    // 4.5MB, putting the real ceiling near 3MB; the proxy now runs on Cloud Run, which
+    // takes 32MB, and Gemini accepts an inline request up to ~20MB — so 14MB of original
+    // file fits even after base64's extra third. NOTE: this number is only true on Cloud
+    // Run. Do not redeploy this file to Vercel without lowering it back to 3MB.
+    if(f && f.size > 14*1024*1024){ $('fileName').textContent = app.lang==='zh'?'文件太大（请小于 14MB，或直接把文字打进来）':'File too large (under 14MB, or type the text in)'; app.uploadFile=null; $('fileClear').classList.remove('hide'); return; }
     app.uploadFile = f || null;
     $('fileName').textContent = f ? f.name : '';
     $('fileClear').classList.toggle('hide', !f);
