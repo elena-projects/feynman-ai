@@ -6,6 +6,10 @@ FROM nginx:1.27-alpine
 # at start-up. The filter limits substitution to GEMINI_API_KEY so nginx's own $host,
 # $arg_model and friends survive.
 COPY nginx.conf /etc/nginx/templates/default.conf.template
+# The rate-limit zone lives in the http context, so it is a plain conf.d file rather than
+# part of the server template. The 00- prefix makes nginx read it before default.conf,
+# which refers to the zone.
+COPY ratelimit.conf /etc/nginx/conf.d/00-ratelimit.conf
 ENV NGINX_ENVSUBST_FILTER=GEMINI_API_KEY
 COPY public /usr/share/nginx/html
 # COPY preserves the source file's mode, and index.html arrives 600 from the Mac — which

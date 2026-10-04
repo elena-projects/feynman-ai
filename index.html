@@ -850,6 +850,14 @@
       aiSay(q); app.cur.history.push({role:'model',text:q});
     }).catch(function(e){
       showThinking(false); $('sendBtn').disabled=false;
+      // 429 is our own rate limit, and it is temporary. Telling someone to check their key
+      // and network sends them hunting for a problem that is not theirs, and dropping to
+      // the demo brain would quietly make the AI look stupid for the rest of the session —
+      // so say what happened and let them send the same message again in a moment.
+      if(/\b429\b/.test(String((e&&e.message)||''))){
+        $('live').textContent = app.lang==='zh'?'⚠️ 这会儿请求太密集了，等几秒再发一次就好。':'⚠️ Too many requests right now — wait a few seconds and send it again.';
+        return;
+      }
       $('live').textContent = app.lang==='zh'?'⚠️ 连接模型失败，暂用演示大脑（检查密钥/网络）。':'⚠️ Model call failed — using demo brain (check key/network).';
       demoRespond(userText, wordCount(userText));
     });
