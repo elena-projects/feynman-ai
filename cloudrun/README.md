@@ -41,11 +41,12 @@ That account has `roles/editor`, which is not enough for either of these:
         --domain=feynman.elenaprojects.cc --region=asia-southeast1 \
         --account=elena@geminiat.work
 
-## Rolling back to Vercel
+## There is no Vercel fallback any more
 
-The Vercel project is untouched. Put the DNS record back:
+The Vercel project was deleted on 2026-10-04. It had been kept as a rollback path, but
+every one of its deployment URLs still carried the Gemini key baked in at deploy time —
+the same key the live apps use — behind a proxy with no rate limit. Removing the env var
+did not help, since a deployment keeps the values it was built with, and revoking the key
+would have taken down all three live apps. Deleting the project took every old URL with it.
 
-    vercel dns add elenaprojects.cc feynman CNAME cname.vercel-dns.com
-
-and lower the upload limit in `../index.html` back to 3MB, since the Vercel function
-cannot accept more.
+`../api/gemini.js` is left in the repo as history; nothing serves it.
